@@ -1,0 +1,94 @@
+# File di configurazione generale
+
+# PATHS
+
+[paths]
+
+questions = "utils/config/questions.toml"
+
+schema_path = "utils/json schema"
+
+programs_path = "hashed"
+
+exam_text_path = "exam"
+
+prompt_path = "utils/prompt"
+
+output_path = "output"
+
+# WEIGHTS
+
+# COMBINED RESULT
+[combined_weights]
+llm = 4.0
+tests = 6.0
+
+# OBJECTIVE TEST WEIGHTS
+[tests_weights]
+pvcheck = 6.0
+warning = 2.0
+performance = 2.0
+
+# LLM CONFIGURATION
+
+# EVALUATED TOPICS
+
+[[argomenti]]
+nome = "Strutture di controllo"
+peso = 1.0
+descrizione = "Valutare correttezza e appropriatezza nell’uso di if/else, switch/case, cicli for/while/do...while, gestione di break/continue/return e chiarezza del flusso di controllo."
+
+[[argomenti]]
+nome = "Tipi di dati"
+peso = 1.0
+descrizione = "Valutare scelta e uso dei tipi primitivi (int, float, double, char, bool), coerenza dei tipi, correttezza dei cast, gestione di costanti e precisione numerica."
+
+[[argomenti]]
+nome = "Funzioni"
+peso = 1.3
+descrizione = "Valutare modularità del codice, chiarezza dei parametri, riusabilità, uso corretto di valori di ritorno e gestione dello scope delle variabili. Per ciascuna funzione valutare se le funzioni eseguono correttamente il loro compito."
+
+[[argomenti]]
+nome = "Tipi di dati derivati"
+peso = 1.0
+descrizione = "Valutare utilizzo di array, stringhe e struct, correttezza degli indici, inizializzazione, accesso ai dati e manipolazione sicura delle stringhe."
+
+[[argomenti]]
+nome = "Utilizzo dei file"
+peso = 1.2
+descrizione = "Valutare uso di fopen, fclose, fread, fwrite, fprintf, fscanf, gestione corretta dei puntatori a file, verifica errori e chiusura appropriata."
+
+[[argomenti]]
+nome = "Puntatori"
+peso = 1.3
+descrizione = "Valutare comprensione di indirizzi e dereferenziazione, uso per passaggio parametri, gestione dinamica della memoria (malloc, calloc, free), prevenzione di memory leak e dangling pointer."
+
+[[argomenti]]
+nome = "Classi di memorizzazione"
+peso = 0.3
+descrizione = "Valutare conoscenza e uso di auto, static, extern, register, comprensione dello scope, durata delle variabili e impatto sulle prestazioni."
+
+[[argomenti]]
+nome = "Gli operatori"
+peso = 0.7
+descrizione = "Valutare uso corretto di operatori aritmetici, logici, relazionali e bitwise, comprensione di priorità e associatività, uso appropriato di incremento/decremento, assegnazioni composte e operatore ternario."
+
+[[argomenti]]
+nome = "Ordinamento"
+peso = 1.2
+descrizione = "Valutare implementazione di algoritmi di ordinamento come qsort oppure il corretto utilizzo della stessa nel caso in cui venga utilizzata. Considera come aspetti correttezza, efficienza e gestione dei casi limite."
+
+[[argomenti]]
+nome = "Stile di programmazione"
+peso = 0.8
+descrizione = "Valutare leggibilità generale: indentazione, naming coerente, commenti, organizzazione in file, aderenza a uno stile chiaro e uniforme."
+
+# SUMMARY ANALYSIS
+
+[[analisi]]
+nome = "problemi prioritari"
+descrizione = "Menziona i problemi principali emersi nell'analisi dei vari argomenti spiegando dove sono e in cosa consistono i problemi"
+
+[[analisi]]
+nome = "suggerimenti concreti"
+descrizione = "Sulla base dei problemi evidenziati proponi suggerimenti concreti con lo scopo di migliorare e correggere il programma nei punti in cui tali si presentano tali problemi"

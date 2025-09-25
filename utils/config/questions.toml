@@ -1,0 +1,9 @@
+# File di configurazione per tema d'esame
+
+# QUESTIONS WEIGHTS
+[questions_weights]
+1 = 1.0
+2 = 1.5
+3 = 1.5
+4 = 2.0
+5 = 4.0

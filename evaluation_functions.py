@@ -1,0 +1,137 @@
+import subprocess
+import time
+import csv
+import io
+import os
+
+
+def select_file(type, files_path, extension):
+    # Trova tutti i programmi C nella cartella
+    files = [fl for fl in os.listdir(files_path) if fl.endswith(extension)]
+    if not files:
+        raise FileNotFoundError(f"Nessun {type} trovato nella cartella {files_path}.")
+
+    # Stampa i file disponibili e scegli
+    print(f"{type.capitalize()} disponibili:")
+    for i, file_name in enumerate(files):
+        print(f"{i}: {file_name}")
+
+    choice = int(input(f"Scegli il numero del {type} da passare: "))
+    selected_file = files[choice]
+
+    # Leggi quello selezionato
+    with open(os.path.join(files_path, selected_file), "r", encoding="utf-8") as f:
+        text = f.read()
+
+    return text, selected_file
+
+
+def add_line_numbers(code: str) -> str:
+    # Add line numbers for relative comments in the output
+    lines = []
+    for i, line in enumerate(code.splitlines(), start=1):
+        lines.append(f"{i:4d} | {line}")
+
+    return "```c\n" + "\n".join(lines) + "\n```"
+
+
+def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, exec_name="./a.out"):
+    # Compile the program, counts number of warnings and execute pvchceck (csv output)
+    metrics = {tests_names[i]: 0 for i in range(len(tests_names))} # range 0-10
+
+    # Gcc compilation
+    compile_cmd = ["gcc", "-Wall", "-Wextra", "-o", "a.out", file_path]
+    try:
+        result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
+        warnings = result.stderr.count("warning:")
+        metrics[tests_names[1]] = max(0, 10 - warnings)  # each warning reduces the score
+
+        if result.returncode != 0:
+            print("Compilation error")
+            return metrics
+    except subprocess.TimeoutExpired:
+        print("Expired compilation")
+        return metrics
+
+    # Test con pvcheck
+    try:
+        pvcheck_cmd = ["pvcheck", "-F", "csv", "-f", f"{exam_dir_path}/pvcheck.test", exec_name]
+        result = subprocess.run(pvcheck_cmd, capture_output=True, text=True, timeout=10) # aggiungere controllo quando non viene eseguito (caso 64)
+
+        # CSV output parsing
+        csv_data = result.stdout
+        fl = io.StringIO(csv_data)
+        reader = csv.DictReader(fl)
+        headers = reader.fieldnames
+        last5 = headers[-5:]
+        scores = {}
+        for row in reader:
+            if row["TEST"] == "TOTAL":
+                scores = {k: float(row[k]) if row[k] else None for k in last5}
+
+        scores_list = list(scores.values())     # pvcheck scores range: 0-100
+        norm_scores = [s/10 for s in scores_list]
+
+        weights_list = list(pvcheck_weights.values())
+        total_weigths = sum(weights_list)
+        norm_weights = [w/total_weigths for w in weights_list]
+
+        # Weighted mean
+        metrics[tests_names[0]] = sum(v * w for v, w in zip(norm_scores, norm_weights))
+
+    except FileNotFoundError:
+        print("Command not found")
+    except subprocess.TimeoutExpired:
+        return metrics
+
+    # Performance (tempo di esecuzione del programma compilato)
+    try:
+        start = time.time()
+        subprocess.run(exec_name, capture_output=True, timeout=5)
+        elapsed = time.time() - start
+
+        if result.returncode != 0:
+            metrics[tests_names[2]] = 0  # crash
+        else:
+            # mappo tempo su punteggio
+            if elapsed < 1:
+                metrics[tests_names[2]] = 10
+            elif elapsed < 2:
+                metrics[tests_names[2]] = 8
+            else:
+                metrics[tests_names[2]] = 6
+    except subprocess.TimeoutExpired:
+        print("Expired execution time")
+
+    return metrics
+
+
+def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weights, combined_weights, quest_weights):
+
+    # Tests score
+    tests_names = list(tests_weights.keys())
+    tests_score = 0
+    for test in tests_names:
+        tests_score += tests_weights[test] * objective_metrics.get(test, 0)
+    tests_weights_sum = sum(tests_weights.values())
+    tests_score = tests_score / tests_weights_sum
+
+    # LLM score
+    llm_score = 0
+    llm_metrics_spec = {}
+    for w, v in llm_metrics["valutazione"].items():
+        if isinstance(v, dict) and "punteggio" in v:
+            llm_metrics_spec[w] = v["punteggio"]
+            llm_score += v["punteggio"] * llm_weights[w]
+    llm_score = llm_score / sum(llm_weights.values())
+
+    # Final score
+    combined_weights_sum = sum(combined_weights.values())
+    final_score = (combined_weights["tests"] * tests_score + combined_weights["llm"] * llm_score) / combined_weights_sum
+
+    return {
+        "oggettivi": {**objective_metrics, "totale": tests_score},
+        "LLM": {**llm_metrics_spec, "totale": llm_score},
+        "finale": final_score,
+        "pesi": {**quest_weights, **tests_weights, **llm_weights, **combined_weights}
+    }

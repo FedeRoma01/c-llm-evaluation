@@ -1,0 +1,26 @@
+{
+    "name": "CodeEvaluation",
+    "schema": {
+        "type": "object",
+        "properties": {
+            "valutazione": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            },
+            "problemi_prioritari": {
+                "type": "array",
+                "items": {"type": "string"}
+            },
+            "suggerimenti_concreti": {
+                "type": "array",
+                "items": {"type": "string"}
+            }
+        },
+        "required": [
+            "valutazione",
+            "problemi_prioritari",
+            "suggerimenti_concreti"
+        ]
+    }
+}
