@@ -1,6 +1,7 @@
 from openai import OpenAI
 from ollama import Client
 from datetime import datetime
+from collections import defaultdict
 import os
 import json
 import tomllib
@@ -138,7 +139,10 @@ def main():
     # Objective tests
     c_file_path = os.path.join(programs_path, program_name)
     tests = list(tests_weights.keys())
-    weighted_tests_scores = compile_and_test(c_file_path, text_exam_full_path, tests, quest_weights)
+
+    pvcheck_csv_scores = defaultdict(list)
+
+    weighted_tests_scores = compile_and_test(c_file_path, text_exam_full_path, tests, quest_weights, pvcheck_csv_scores)
     metrics_json = {"metriche_oggettive": weighted_tests_scores}
 
     # Prompt construction
@@ -177,7 +181,21 @@ def main():
         "type": "object",
         "properties": {
             "punteggio": {"type": "integer"},
-            "evidenze": {"type": "array", "items": {"type": "string"}}
+            "evidenze": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "commento": {"type": "string"},
+                        "righe": {
+                            "type": "array",
+                            "items": {"type": "string", "pattern": r"^\d+(-\d+)?$"},
+                            "default": []
+                        }
+                    },
+                    "required": ["commento"]
+                }
+            }
         },
         "required": ["punteggio", "evidenze"]
     }
@@ -218,7 +236,7 @@ def main():
 
     # Combine scores
     combined = compute_final_score(weighted_tests_scores, parsed, tests_weights, llm_weights, combined_weights,
-                                   quest_weights)
+                                   quest_weights, pvcheck_csv_scores)
 
     # Saving
     program_n = os.path.splitext(program_name)[0]

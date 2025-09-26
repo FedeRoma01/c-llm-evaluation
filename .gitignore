@@ -1,0 +1,9 @@
+*
+/hashed
+/output
+/prove
+/venv
+.idea/
+__pycache__/
+*.pyc
+a.out
