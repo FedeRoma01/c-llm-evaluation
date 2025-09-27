@@ -6,6 +6,7 @@ import os
 import json
 import tomllib
 import subprocess
+import argparse
 
 from evaluation_functions import (
     select_file, add_line_numbers, compile_and_test, compute_final_score
@@ -90,12 +91,39 @@ def run_fabric(fabric_input, pattern="fabric_prompt"):
     return output_json
 
 
+def init_argparser_basic():
+
+    parser = argparse.ArgumentParser(description='This program evaluates an input c exam program')
+    parser.add_argument(
+            'program', action="store", type=str,
+            help="File containing the c program to be evaluated")
+    parser.add_argument(
+            'exam', action="store", type=str,
+            help="Directory containing the exam resources (text, pvcheck.test, etc...)")
+    parser.add_argument(
+            '--user_prompt', '-up', action="store", type=str, default="up2.md",
+            help="File containing the user prompt to be given to the model")
+    parser.add_argument(
+            '--system_prompt', '-sp', action="store", type=str, default="sp3.md",
+            help="File containing the system prompt to be given to the model")
+    parser.add_argument(
+            '--schema', '-s', action="store", type=str, default="s3.json",
+            help="File containing the output schema to be given to the model")
+    parser.add_argument(
+            '--model', '-m', action="store", type=str, choices=['gpt-4.1-mini', 'llama3.2', 'fabric'], default="gpt-4.1-mini",
+            help='Model to be used for the program evaluation')
+    return parser
+
+
 def main():
     GENERAL_CONFIG_FILE = "utils/config/general.toml"
 
+    parser = init_argparser_basic()
+    input_args = parser.parse_args()
+
     # CONFIGURATION DATA RETRIEVAL
 
-    # STUDENT config
+    # General config
     with open(GENERAL_CONFIG_FILE, "rb") as f:
         general_config = tomllib.load(f)
 
@@ -116,7 +144,7 @@ def main():
     tests_weights = general_config.get("tests_weights")
     combined_weights = general_config.get("combined_weights")
 
-    # PROFESSOR config
+    # EXAM QUESTIONS config
     with open(questions_path, "rb") as f:
         questions = tomllib.load(f)
 
@@ -124,20 +152,22 @@ def main():
     quest_weights = questions.get("questions_weights")
 
     # Get program file and name
-    program, program_name = select_file("c program", programs_path, ".c")
+    program_file = input_args.program
+    program_name = input_args.program.split(".", 1)[0]
+    with open(os.path.join(programs_path, program_file), "r", encoding="utf-8") as f:
+        program = f.read()
     program = add_line_numbers(program)
 
     # Obtain text exam from program name (hashed with data in the name)
-    exam_date = program_name.split("_")[0]
-    exam_date_file = exam_date.replace("-", "")
-    text_exam_full_path = os.path.join(text_exam_path, exam_date_file)
-    file_target = os.path.join(text_exam_full_path, f"{exam_date_file}_programmazione.md")
+    exam_directory = input_args.exam
+    text_exam_full_path = os.path.join(text_exam_path, exam_directory)
+    file_target = os.path.join(text_exam_full_path, f"{exam_directory}_programmazione.md")
     with open(file_target, "r", encoding="utf-8") as f:
         text_exam = f.read()
     text_exam = "```markdown\n" + text_exam + "\n```"
 
     # Objective tests
-    c_file_path = os.path.join(programs_path, program_name)
+    c_file_path = os.path.join(programs_path, program_file)
     tests = list(tests_weights.keys())
 
     pvcheck_csv_scores = defaultdict(list)
@@ -161,12 +191,18 @@ def main():
 
     # System prompt
     system_prompt_path = os.path.join(prompt_path, "system")
-    system_prompt, system_prompt_name = select_file("prompt", system_prompt_path, ".md")
+    system_prompt_file = input_args.system_prompt
+    system_prompt_name = system_prompt_file.split(".", 1)[0]
+    with open(os.path.join(system_prompt_path, system_prompt_file), "r", encoding="utf-8") as f:
+        system_prompt = f.read()
     system_prompt = "```markdown\n" + system_prompt + "\n```"
 
     # User prompt
     user_prompt_path = os.path.join(prompt_path, "user")
-    user_prompt, user_prompt_name = select_file("prompt", user_prompt_path, ".md")
+    user_prompt_file = input_args.user_prompt
+    user_prompt_name = user_prompt_file.split(".", 1)[0]
+    with open(os.path.join(user_prompt_path, user_prompt_file), "r", encoding="utf-8") as f:
+        user_prompt = f.read()
     user_prompt = "```markdown\n" + user_prompt + "\n```"
 
     # Fill prompt with config data
@@ -201,8 +237,9 @@ def main():
     }
 
     # Get json schema and name
-    json_file, json_name = select_file("json", schema_path, ".json")
-    with open(f"{schema_path}/{json_name}", "r", encoding="utf-8") as f:
+    json_file = input_args.schema
+    json_name = json_file.split(".", 1)[0]
+    with open(os.path.join(schema_path, json_file), "r", encoding="utf-8") as f:
         schema = json.load(f)
 
     # Add arguments to be evaluated in the schema
@@ -211,40 +248,33 @@ def main():
     eval["properties"] = {arg: eval_template for arg in args_list}
     eval["required"] = args_list
 
-    # --- Selezione modello ---
-    print("Scegli il modello:")
-    print("1. OpenAI GPT")
-    print("2. Ollama (locale)")
-    choice = input(">> ")
-
-    if choice == "1":
+    # Model selection
+    choice = input_args.model
+    if choice == "gpt-4.1-mini":
         dest_dir = "GPTAnalysis"
         parsed = run_openai(system_prompt, user_prompt, schema, model="gpt-4.1-mini")
-    elif choice == "2":
+    elif choice == "llama3.2":
         dest_dir = "llama3.2"
         parsed = run_ollama(system_prompt, user_prompt, schema, model="llama3.2")
     else:
         with open(f"{prompt_path}/fabric_input.md", "r", encoding="utf-8") as f:
             fabric_input = f.read()
+        dest_dir = "fabric"
         fabric_input = fabric_input.replace("{{ argomenti }}", args_md_str)
         fabric_input = fabric_input.replace("{{ testo d'esame }}", text_exam)
         fabric_input = fabric_input.replace("{{ programma }}", program)
         fabric_input = fabric_input.replace("{{ schema json }}", f"{schema}")
         parsed = run_fabric(fabric_input)
 
-    print(parsed)
+    #print(parsed)
 
     # Combine scores
     combined = compute_final_score(weighted_tests_scores, parsed, tests_weights, llm_weights, combined_weights,
                                    quest_weights, pvcheck_csv_scores)
 
     # Saving
-    program_n = os.path.splitext(program_name)[0]
-    program_n = program_n.split("_")[1]
     timestamp = datetime.now().strftime("%H-%M-%S")
-    system_prompt_version = os.path.splitext(system_prompt_name)[0]
-    user_prompt_version = os.path.splitext(user_prompt_name)[0]
-    output_file_name = f"{exam_date}_{timestamp}_{program_n}_{system_prompt_version}_{user_prompt_version}_{json_name}"
+    output_file_name = f"{exam_directory}_{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
     output_file_path = os.path.join(output_path, dest_dir, output_file_name)
     with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump({
@@ -252,7 +282,7 @@ def main():
             "risultato_finale": combined
         }, f, indent=2, ensure_ascii=False)
 
-    print(f"Output salvato in {output_file_path}")
+    print(f"Output saved in {output_file_path}")
 
 
 if __name__ == "__main__":

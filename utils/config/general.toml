@@ -3,17 +3,11 @@
 # PATHS
 
 [paths]
-
 questions = "utils/config/questions.toml"
-
 schema_path = "utils/json schema"
-
-programs_path = "hashed"
-
-exam_text_path = "exam"
-
+programs_path = "resources/hashed"
+exam_text_path = "resources/exam"
 prompt_path = "utils/prompt"
-
 output_path = "output"
 
 # WEIGHTS
