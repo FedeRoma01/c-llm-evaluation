@@ -93,13 +93,13 @@ def run_fabric(fabric_input, pattern="fabric_prompt"):
 
 def init_argparser_basic():
 
-    parser = argparse.ArgumentParser(description='This program evaluates an input c exam program')
+    parser = argparse.ArgumentParser(description='This program evaluates an input c exams program')
     parser.add_argument(
             'program', action="store", type=str,
             help="File containing the c program to be evaluated")
     parser.add_argument(
-            'exam', action="store", type=str,
-            help="Directory containing the exam resources (text, pvcheck.test, etc...)")
+            'exams', action="store", type=str,
+            help="Directory containing the exams resources (text, pvcheck.test, etc...)")
     parser.add_argument(
             '--user_prompt', '-up', action="store", type=str, default="up2.md",
             help="File containing the user prompt to be given to the model")
@@ -158,7 +158,7 @@ def main():
         program = f.read()
     program = add_line_numbers(program)
 
-    # Obtain text exam from program name (hashed with data in the name)
+    # Obtain text exams from program name (hashed with data in the name)
     exam_directory = input_args.exam
     text_exam_full_path = os.path.join(text_exam_path, exam_directory)
     file_target = os.path.join(text_exam_full_path, f"{exam_directory}_programmazione.md")

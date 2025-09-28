@@ -1,4 +1,5 @@
-/resources/hashed
+/resources/hashed/*
+!/resources/hashed/prova.c
 /output
 /prove
 /venv
