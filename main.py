@@ -159,7 +159,7 @@ def main():
     program = add_line_numbers(program)
 
     # Obtain text exams from program name (hashed with data in the name)
-    exam_directory = input_args.exam
+    exam_directory = input_args.exams
     text_exam_full_path = os.path.join(text_exam_path, exam_directory)
     file_target = os.path.join(text_exam_full_path, f"{exam_directory}_programmazione.md")
     with open(file_target, "r", encoding="utf-8") as f:

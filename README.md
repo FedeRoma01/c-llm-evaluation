@@ -17,10 +17,11 @@ The repository is organized as follows:
 ├── resources/
 │   ├── hashed/              # Input C programs (hashed versions)
 │   └── exams/               # Exam-specific resources and related files
-└── utils/
-    ├── prompt/              # Prompt templates (system and user) for LLMs
-    ├── json schema/         # JSON schemas defining expected output structures
-    └── config/              # Configuration files (paths, model settings, weights)
+├── utils/
+│   ├── prompt/              # Prompt templates (system and user) for LLMs
+│   ├── json schema/         # JSON schemas defining expected output structures
+│   └── config/              # Configuration files (paths, model settings, weights)
+└── pyproject.toml           # Project and dependencies configuration managed by uv
 ```
 
 ### Key Components
@@ -41,6 +42,10 @@ The repository is organized as follows:
   * `main.py`: orchestrates the evaluation process, handles prompts, interacts with LLMs, and saves results.
   * `evaluation_functions.py`: manages compilation, test execution (via `pvcheck`), performance metrics, and score aggregation.
 
+* **uv project files**
+
+  * `pyproject.toml`: defines project metadata and dependencies.
+
 ## Features
 
 * **Compilation Check**: evaluates warnings and errors during program compilation.
@@ -59,15 +64,26 @@ The repository is organized as follows:
    cd <repository-name>
    ```
 
-2. Install Python dependencies (Python 3.10+ recommended):
+2. **Install uv (recommended)**
+
+   `uv` is the recommended tool for dependency management and virtual environments in this project.
+   You can install it following the official instructions:
 
    ```bash
-   pip install -r requirements.txt
+   pip install uv
    ```
 
-   *(Ensure you have `openai`, `ollama`, and other required packages installed.)*
+   or, if you prefer, use one of the prebuilt binaries from [uv’s installation guide](https://github.com/astral-sh/uv).
 
-3. Install external tools required for testing:
+3. Set up the environment with **uv**:
+
+   ```bash
+   uv sync
+   ```
+
+   This will create a `.venv/` virtual environment (excluded from version control) and install all dependencies specified in `pyproject.toml`.
+
+4. Install external tools required for testing:
 
    * `gcc` (for compilation)
    * `pvcheck` (for automated exam testing)
@@ -78,7 +94,7 @@ The repository is organized as follows:
 Run the evaluator with:
 
 ```bash
-python main.py <program_file.c> <exam_directory> [options]
+uv run main.py <program_file.c> <exam_directory> [options]
 ```
 
 ### Arguments
@@ -96,7 +112,7 @@ python main.py <program_file.c> <exam_directory> [options]
 ### Example
 
 ```bash
-python main.py prova.c 20220728 -m gpt-4.1-mini -up up2.md -sp sp3.md -s s3.json
+uv run main.py prova.c 20220728 -m gpt-4.1-mini -up up2.md -sp sp3.md -s s3.json
 ```
 
 This command evaluates `prova.c` against the exam resources in `20220728/` using GPT-4.1-mini and specified prompt/schema files.
@@ -114,4 +130,4 @@ Each output JSON file contains:
 
 ## License
 
-This project is provided for academic and research purposes. Please check the repository for licensing details.
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
