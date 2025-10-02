@@ -15,18 +15,26 @@ from evaluation_functions import (
 
 def run_openai(sys_prompt, usr_prompt, schema, model):
     # API call (with Structured Output)
+    # API call (with Structured Output)
     client = OpenAI()
-    response = client.chat.completions.create(
+    response = client.responses.create(
         model=model,
-        messages=[
+        input=[
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": usr_prompt}
         ],
-        response_format={"type": "json_schema", "json_schema": schema},
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "response_schema",
+                "strict": True,
+                "schema": schema
+            }
+        },
         temperature=0
     )
 
-    return json.loads(response.choices[0].message.content)
+    return json.loads(response.output[0].content[0].text)
 
 
 def run_ollama(sys_prompt, usr_prompt, schema, model):

@@ -1,0 +1,47 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "valutazione": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "nome": { "type": "string" },
+          "punteggio": { "type": "integer" },
+          "evidenze": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "commento": { "type": "string" },
+                "righe": {
+                  "type": "array",
+                  "items": { "type": "string", "pattern": "^\\d+(-\\d+)?$" },
+                  "default": []
+                }
+              },
+              "required": ["commento", "righe"]
+            }
+          }
+        },
+        "required": ["nome", "punteggio", "evidenze"]
+      }
+    },
+    "problemi_prioritari": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "suggerimenti_concreti": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": [
+    "valutazione",
+    "problemi_prioritari",
+    "suggerimenti_concreti"
+  ]
+}
