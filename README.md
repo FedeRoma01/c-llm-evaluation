@@ -22,6 +22,8 @@ The repository is organized as follows:
 │   ├── json schema/         # JSON schemas defining expected output structures
 │   └── config/              # Configuration files (paths, model settings, weights)
 └── pyproject.toml           # Project and dependencies configuration managed by uv
+├── uv.lock                  # Lock file with exact dependency versions
+└── .python-version          # Python version used for the environment
 ```
 
 ### Key Components
@@ -45,6 +47,8 @@ The repository is organized as follows:
 * **uv project files**
 
   * `pyproject.toml`: defines project metadata and dependencies.
+  * `uv.lock`: lock file with exact dependency versions for reproducible builds.
+  * `.python-version`: records the Python version used in the environment.
 
 ## Features
 
@@ -86,8 +90,8 @@ The repository is organized as follows:
 4. Install external tools required for testing:
 
    * `gcc` (for compilation)
-   * `pvcheck` (for automated exam testing)
-   * Optional: `fabric` (if using the Fabric model backend)
+   * `pvcheck` (for automated exam testing) (https://github.com/claudio-unipv/pvcheck.git)
+   * Optional: `fabric` (if using the Fabric model backend) (https://github.com/danielmiessler/Fabric.git)
 
 ## Usage
 
