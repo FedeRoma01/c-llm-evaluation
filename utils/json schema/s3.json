@@ -4,9 +4,30 @@
         "type": "object",
         "properties": {
             "valutazione": {
-                "type": "object",
-                "properties": {},
-                "required": []
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "nome": { "type": "string" },
+                    "punteggio": { "type": "integer" },
+                    "evidenze": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "commento": { "type": "string" },
+                          "righe": {
+                            "type": "array",
+                            "items": { "type": "string", "pattern": "^\\d+(-\\d+)?$" },
+                            "default": []
+                          }
+                        },
+                        "required": ["commento"]
+                      }
+                    }
+                  },
+                  "required": ["nome", "punteggio", "evidenze"]
+                }
             },
             "problemi_prioritari": {
                 "type": "array",
