@@ -42,7 +42,7 @@ Per ogni argomento:
 
 Genera un output **in formato JSON** che segua esattamente lo schema specificato.
 
-{{ schema json }}
+{{ schema }}
 
 ---
 

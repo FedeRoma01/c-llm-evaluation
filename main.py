@@ -31,64 +31,57 @@ def run_openai(sys_prompt, usr_prompt, schema, model):
 
 def run_ollama(sys_prompt, usr_prompt, schema, model):
 
-    client = Client(host="http://localhost:11434")
+    client = Client()
     # Add output schema in the system prompt
     schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
-    json_specified_prompt = f"""
-{usr_prompt}
-
----
-
-## Output
-
-Genera un output in **formato JSON** che rispetti esattamente lo schema fornito.
-
-### Schema JSON
-
-{schema_str}
-"""
+    json_specified_prompt = sys_prompt.replace("{{ schema }}", schema_str)
     response = client.chat(
         model=model,
         messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": json_specified_prompt}
-        ]
+            {"role": "system", "content": json_specified_prompt},
+            {"role": "user", "content": usr_prompt}
+        ],
+        options={
+            "temperature": 0,
+            "top_k": 10
+        },
+        format=schema
     )
     output_text = response.message.content.strip()
     if output_text.startswith("```") and output_text.endswith("```"):
         output_text = "\n".join(output_text.split("\n")[1:-1])
 
-    # Parsing
-    # fallback: prova a estrarre la parte JSON tra { ... }
-    start = output_text.find("{")
-    end = output_text.rfind("}")
-    if start != -1 and end != -1:
-        return json.loads(output_text[start:end + 1])
-    else:
-        return json.loads(output_text)
+    parsed = json.loads(output_text)
+
+    # Salva su file
+    with open("prova_llama3.2", "w", encoding="utf-8") as f:
+        json.dump(parsed, f, ensure_ascii=False, indent=2)
+
+    return parsed
 
 
-def run_fabric(fabric_input, pattern="fabric_prompt"):
-
-    result = subprocess.run(
-        ["wsl", "fabric", "-p", pattern, fabric_input],
-        capture_output=True,
-        text=True
+def run_fabric(exam, schema, args, program):
+    """
+    fab = Fabric()
+    result = fab.run(
+        pattern="evaluate_c",
+        inputs={
+            "schema": f"{schema}",
+            "argomenti": args,
+            "testo d'esame": exam,
+            "programma": program
+        }
     )
 
-    if result.returncode != 0:
-        print("Errore durante l'esecuzione del comando:")
-        print(result.stderr)
-
     try:
-        output_json = json.loads(result.stdout.strip())
+        output_json = json.loads(result.output)
     except json.JSONDecodeError as e:
         print("Errore nel parsing del JSON:")
-        print(result.stdout)
-        print(e)
+        print(result.ouput)
         return None
 
     return output_json
+    """
 
 
 def init_argparser_basic():
@@ -110,7 +103,7 @@ def init_argparser_basic():
             '--schema', '-s', action="store", type=str, default="s3.json",
             help="File containing the output schema to be given to the model")
     parser.add_argument(
-            '--model', '-m', action="store", type=str, choices=['gpt-4.1-mini', 'llama3.2', 'fabric'], default="gpt-4.1-mini",
+            '--model', '-m', action="store", type=str, choices=['gpt-4.1-mini', 'llama3.2', 'fabric', 'deepseek-r1:1.5b'], default="gpt-4.1-mini",
             help='Model to be used for the program evaluation')
     return parser
 
@@ -211,62 +204,26 @@ def main():
     user_prompt = user_prompt.replace("{{ programma }}", program)
 
     # JSON schema
-
-    # Evaluation template
-    eval_template = {
-        "type": "object",
-        "properties": {
-            "punteggio": {"type": "integer"},
-            "evidenze": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "commento": {"type": "string"},
-                        "righe": {
-                            "type": "array",
-                            "items": {"type": "string", "pattern": r"^\d+(-\d+)?$"},
-                            "default": []
-                        }
-                    },
-                    "required": ["commento"]
-                }
-            }
-        },
-        "required": ["punteggio", "evidenze"]
-    }
-
-    # Get json schema and name
     json_file = input_args.schema
     json_name = json_file.split(".", 1)[0]
     with open(os.path.join(schema_path, json_file), "r", encoding="utf-8") as f:
         schema = json.load(f)
-
-    # Add arguments to be evaluated in the schema
-    args_list = [arg["nome"] for arg in args]
-    eval = schema["schema"]["properties"]["valutazione"]
-    eval["properties"] = {arg: eval_template for arg in args_list}
-    eval["required"] = args_list
 
     # Model selection
     choice = input_args.model
     if choice == "gpt-4.1-mini":
         dest_dir = "GPTAnalysis"
         parsed = run_openai(system_prompt, user_prompt, schema, model="gpt-4.1-mini")
-    elif choice == "llama3.2":
+    elif (choice == "llama3.2" or choice == "deepseek-r1:1.5b"):
         dest_dir = "llama3.2"
         parsed = run_ollama(system_prompt, user_prompt, schema, model="llama3.2")
+    """
     else:
-        with open(f"{prompt_path}/fabric_input.md", "r", encoding="utf-8") as f:
-            fabric_input = f.read()
         dest_dir = "fabric"
-        fabric_input = fabric_input.replace("{{ argomenti }}", args_md_str)
-        fabric_input = fabric_input.replace("{{ testo d'esame }}", text_exam)
-        fabric_input = fabric_input.replace("{{ programma }}", program)
-        fabric_input = fabric_input.replace("{{ schema json }}", f"{schema}")
-        parsed = run_fabric(fabric_input)
+        parsed = run_fabric(text_exam, schema, args_md_str, program)
+    """
 
-    #print(parsed)
+    print("RISULTATO: \n", parsed)
 
     # Combine scores
     combined = compute_final_score(weighted_tests_scores, parsed, tests_weights, llm_weights, combined_weights,
@@ -274,7 +231,8 @@ def main():
 
     # Saving
     timestamp = datetime.now().strftime("%H-%M-%S")
-    output_file_name = f"{exam_directory}_{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
+    exam_date = program_name.split("_")[0]
+    output_file_name = f"{exam_date}_{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
     output_file_path = os.path.join(output_path, dest_dir, output_file_name)
     with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump({

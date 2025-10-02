@@ -37,7 +37,7 @@ def add_line_numbers(code: str) -> str:
 
 def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, pvcheck_csv_scores, exec_name="./a.out"):
     # Compile the program, counts number of warnings and execute pvchceck (csv output)
-    metrics = {tests_names[i]: 0 for i in range(len(tests_names))} # range 0-10
+    metrics = {tests_names[i]: 0 for i in range(len(tests_names))}  # range 0-10
 
     # Gcc compilation
     compile_cmd = ["gcc", "-Wall", "-Wextra", "-o", "a.out", file_path]
@@ -56,7 +56,8 @@ def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, pvc
     # Test con pvcheck
     try:
         pvcheck_cmd = ["pvcheck", "-F", "csv", "-f", f"{exam_dir_path}/pvcheck.test", exec_name]
-        result = subprocess.run(pvcheck_cmd, capture_output=True, text=True, timeout=10)    # aggiungere controllo quando non viene eseguito (caso 64)
+        result = subprocess.run(pvcheck_cmd, capture_output=True, text=True,
+                                timeout=10)  # aggiungere controllo quando non viene eseguito (caso 64)
 
         # CSV output parsing
         csv_data = result.stdout
@@ -69,12 +70,13 @@ def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, pvc
             for key, val in row.items():
                 pvcheck_csv_scores[key].append(val)
 
-        scores_list = [float(values[-1]) for key, values in list(pvcheck_csv_scores.items())[2:]]     # pvcheck scores range: 0-100
-        norm_scores = [s/10 for s in scores_list]
+        scores_list = [float(values[-1]) for key, values in
+                       list(pvcheck_csv_scores.items())[2:]]  # pvcheck scores range: 0-100
+        norm_scores = [s / 10 for s in scores_list]
 
         weights_list = list(pvcheck_weights.values())
         total_weigths = sum(weights_list)
-        norm_weights = [w/total_weigths for w in weights_list]
+        norm_weights = [w / total_weigths for w in weights_list]
 
         # Weighted mean
         metrics[tests_names[0]] = sum(v * w for v, w in zip(norm_scores, norm_weights))
@@ -106,8 +108,8 @@ def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, pvc
     return metrics
 
 
-def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weights, combined_weights, quest_weights, pvcheck_csv_scores):
-
+def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weights, combined_weights, quest_weights,
+                        pvcheck_csv_scores):
     # Tests score
     tests_names = list(tests_weights.keys())
     tests_score = 0
@@ -119,10 +121,9 @@ def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weigh
     # LLM score
     llm_score = 0
     llm_metrics_spec = {}
-    for w, v in llm_metrics["valutazione"].items():
-        if isinstance(v, dict) and "punteggio" in v:
-            llm_metrics_spec[w] = v["punteggio"]
-            llm_score += v["punteggio"] * llm_weights[w]
+    for arg in llm_metrics["valutazione"]:
+        llm_metrics_spec[arg["nome"]] = arg["punteggio"]
+        llm_score += arg["punteggio"] * llm_weights[arg["nome"]]
     llm_score = llm_score / sum(llm_weights.values())
 
     # Final score
@@ -134,5 +135,6 @@ def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weigh
         "oggettivi": {**objective_metrics, "totale": tests_score},
         "LLM": {**llm_metrics_spec, "totale": llm_score},
         "finale": final_score,
-        "pesi": {"domande": quest_weights, "oggettivi": tests_weights, "LLM": llm_weights, "combinazione finale": combined_weights}
+        "pesi": {"domande": quest_weights, "oggettivi": tests_weights, "LLM": llm_weights,
+                 "combinazione finale": combined_weights}
     }
