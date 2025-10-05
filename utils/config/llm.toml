@@ -1,32 +1,6 @@
-# File di configurazione generale
-
-# PATHS
-
-[paths]
-questions = "utils/config/questions.toml"
-schema_path = "utils/json schema"
-programs_path = "resources/hashed"
-exam_text_path = "resources/exams"
-prompt_path = "utils/prompt"
-output_path = "output"
-
-# WEIGHTS
-
-# COMBINED RESULT
-[combined_weights]
-llm = 4.0
-tests = 6.0
-
-# OBJECTIVE TEST WEIGHTS
-[tests_weights]
-pvcheck = 6.0
-warning = 2.0
-performance = 2.0
-
-# LLM CONFIGURATION
+# LLM config file
 
 # EVALUATED TOPICS
-
 [[argomenti]]
 nome = "Strutture di controllo"
 peso = 1.0
@@ -78,7 +52,6 @@ peso = 0.8
 descrizione = "Valutare leggibilità generale: indentazione, naming coerente, commenti, organizzazione in file, aderenza a uno stile chiaro e uniforme."
 
 # SUMMARY ANALYSIS
-
 [[analisi]]
 nome = "problemi prioritari"
 descrizione = "Menziona i problemi principali emersi nell'analisi dei vari argomenti spiegando dove sono e in cosa consistono i problemi"

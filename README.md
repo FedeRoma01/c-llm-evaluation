@@ -15,13 +15,14 @@ The repository is organized as follows:
 ├── main.py                  # Entry point of the application
 ├── evaluation_functions.py  # Utility functions for compilation, testing, scoring
 ├── resources/
-│   ├── hashed/              # Input C programs (hashed versions)
-│   └── exams/               # Exam-specific resources and related files
+│   ├── sources/              # Input C programs (hashed versions)
+│   └── 20220728/               # Exam-specific resources and related files
 ├── utils/
 │   ├── prompt/              # Prompt templates (system and user) for LLMs
 │   ├── json schema/         # JSON schemas defining expected output structures
-│   └── config/              # Configuration files (paths, model settings, weights)
-└── pyproject.toml           # Project and dependencies configuration managed by uv
+│   └── config/              # Configuration files (relative to llm and exam)
+├── config.toml              # Main configuration file
+├── pyproject.toml           # Project and dependencies configuration managed by uv
 ├── uv.lock                  # Lock file with exact dependency versions
 └── .python-version          # Python version used for the environment
 ```
@@ -30,8 +31,12 @@ The repository is organized as follows:
 
 * **resources**
 
-  * `hashed`: contains student C programs.
-  * `exams`: contains exam-related files (texts, test cases, etc.).
+  * `sources`: contains student C programs.
+  * `20220728`: contains exam-related files (texts, test cases, etc.).
+
+* **configuration**
+
+  * `config.toml`: contains the main configurations.
 
 * **utils**
 
@@ -90,25 +95,37 @@ The repository is organized as follows:
 4. Install external tools required for testing:
 
    * `gcc` (for compilation)
-   * `pvcheck` (for automated exam testing) (https://github.com/claudio-unipv/pvcheck.git)
-   * Optional: `fabric` (if using the Fabric model backend) (https://github.com/danielmiessler/Fabric.git)
+   * [`pvcheck`](https://github.com/claudio-unipv/pvcheck.git) (for automated exam testing) 
+   * Optional: [`fabric`](https://github.com/danielmiessler/Fabric.git) (if using the Fabric model backend)
 
 ## Usage
+
+### Pre requisites
+
+In order to be able to use some models, like gpt-4.1-mini, an API-key is required.
+To use it, you have to set it as a environment variable:
+
+```bash
+export OPENAI_API_KEY="your_api_key_here"
+```
+
+### Execute the program
 
 Run the evaluator with:
 
 ```bash
-uv run main.py <program_file.c> <exam_directory> [options]
+uv run main.py <program_file.c> [options]
 ```
 
 ### Arguments
 
 * `program` (str): The C program file to evaluate.
-* `exams` (str): The exam directory containing related resources (e.g., text, tests).
 
 ### Options
 
 * `--user_prompt, -up`: User prompt file (default: `up2.md`).
+* `--exam, -ex`: The exam directory containing related resources (e.g., text, tests).
+* `--config, -cf`: Boolean value to enable/disable pre-configured input files path (default: `True`).
 * `--system_prompt, -sp`: System prompt file (default: `sp3.md`).
 * `--schema, -s`: JSON schema file (default: `s3.json`).
 * `--model, -m`: Model to use (`gpt-4.1-mini`, `llama3.2`, or `fabric`).
@@ -116,14 +133,14 @@ uv run main.py <program_file.c> <exam_directory> [options]
 ### Example
 
 ```bash
-uv run main.py prova.c 20220728 -m gpt-4.1-mini -up up2.md -sp sp3.md -s s3.json
+uv run main.py prova.c -ex 20220728 -m gpt-4.1-mini -up up2.md -sp sp3.md -s s5.json
 ```
 
 This command evaluates `prova.c` against the exam resources in `20220728/` using GPT-4.1-mini and specified prompt/schema files.
 
 ## Output
 
-Results are saved in the `output_path` specified in `utils/config/general.toml`, under subfolders by model type (`GPTAnalysis/`, `llama3.2/`, `fabric/`).
+Results are saved in the `output_path` specified in `config.toml`, under subfolders by model type (`GPTAnalysis/`, `llama3.2/`, `fabric/`).
 Each output JSON file contains:
 
 * **LLM evaluation** (scores and comments per criterion)

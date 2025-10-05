@@ -1,5 +1,5 @@
-/resources/hashed/*
-!/resources/hashed/prova.c
+/resources/sources/*
+!/resources/sources/prova.c
 /output
 /prove
 /venv
@@ -8,3 +8,4 @@
 __pycache__/
 *.pyc
 a.out
+uv.lock

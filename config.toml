@@ -1,0 +1,18 @@
+# General config file
+
+# PATHS
+[paths]
+questions = "utils/config/questions.toml"
+llm = "utils/config/llm.toml"
+output_path = "output"
+# Default argument file paths (not to be considered if config = False)
+schema_path = "utils/json schema"
+programs_path = "resources/sources"
+exam_text_path = "resources"
+prompt_path = "utils/prompt"
+
+
+# COMBINED RESULT
+[combined_weights]
+llm = 4.0
+tests = 6.0

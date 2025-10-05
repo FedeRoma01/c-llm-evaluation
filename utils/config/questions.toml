@@ -1,4 +1,4 @@
-# File di configurazione per tema d'esame
+# Pvcheck config file
 
 # QUESTIONS WEIGHTS
 [questions_weights]
@@ -7,3 +7,9 @@
 3 = 1.5
 4 = 2.0
 5 = 4.0
+
+# OBJECTIVE TEST WEIGHTS
+[tests_weights]
+pvcheck = 6.0
+warning = 2.0
+performance = 2.0
