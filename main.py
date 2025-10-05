@@ -227,7 +227,6 @@ def main():
 
     # Fill prompt with config data
     user_prompt = user_prompt.replace("{{ argomenti }}", args_md_str)
-    print(user_prompt)
     if context_flag:
         user_prompt = user_prompt.replace("{{ testo d'esame }}", text_exam)
     user_prompt = user_prompt.replace("{{ programma }}", program)
@@ -252,7 +251,7 @@ def main():
         parsed = run_fabric(text_exam, schema, args_md_str, program)
     """
 
-    print("RISULTATO: \n", parsed)
+    #print("RISULTATO: \n", parsed)
 
     # Combine scores
     if context_flag:
