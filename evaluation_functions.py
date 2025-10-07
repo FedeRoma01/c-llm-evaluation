@@ -5,27 +5,6 @@ import io
 import os
 
 
-def select_file(type, files_path, extension):
-    # Trova tutti i programmi C nella cartella
-    files = [fl for fl in os.listdir(files_path) if fl.endswith(extension)]
-    if not files:
-        raise FileNotFoundError(f"Nessun {type} trovato nella cartella {files_path}.")
-
-    # Stampa i file disponibili e scegli
-    print(f"{type.capitalize()} disponibili:")
-    for i, file_name in enumerate(files):
-        print(f"{i}: {file_name}")
-
-    choice = int(input(f"Scegli il numero del {type} da passare: "))
-    selected_file = files[choice]
-
-    # Leggi quello selezionato
-    with open(os.path.join(files_path, selected_file), "r", encoding="utf-8") as f:
-        text = f.read()
-
-    return text, selected_file
-
-
 def add_line_numbers(code: str) -> str:
     # Add line numbers for relative comments in the output
     lines = []
@@ -35,77 +14,72 @@ def add_line_numbers(code: str) -> str:
     return "```c\n" + "\n".join(lines) + "\n```"
 
 
-def compile_and_test(file_path, exam_dir_path, tests_names, pvcheck_weights, pvcheck_csv_scores, exec_name="./a.out"):
-    # Compile the program, counts number of warnings and execute pvchceck (csv output)
-    metrics = {tests_names[i]: 0 for i in range(len(tests_names))}  # range 0-10
-
+def compilation_test(file_path):
     # Gcc compilation
     compile_cmd = ["gcc", "-Wall", "-Wextra", "-o", "a.out", file_path]
+    res = 0
     try:
         result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
         warnings = result.stderr.count("warning:")
-        metrics[tests_names[1]] = max(0, 10 - warnings)  # each warning reduces the score
-
+        res = max(0, 10 - warnings)
         if result.returncode != 0:
             print("Compilation error")
-            return metrics
     except subprocess.TimeoutExpired:
         print("Expired compilation")
-        return metrics
+    return res
 
+
+def time_test(p_input, exec_name="./a.out"):
+    # Time performance
+    res = 0
+    try:
+        compile_cmd = [exec_name, p_input]
+        start = time.time()
+        result = subprocess.run(compile_cmd, capture_output=True, timeout=5)
+        elapsed = time.time() - start
+        if result.returncode != 0:
+            print("Program exited with an error or crashed")
+        else:
+            if elapsed < 1:
+                res = 10
+            elif elapsed < 2:
+                res = 8
+            else:
+                res = 6
+    except subprocess.TimeoutExpired:
+        print("Expired execution time")
+
+    return res
+
+
+def pvcheck_test(pvcheck_weights, pvcheck_csv_scores, exam_dir_path, exec_name="./a.out"):
     # Test con pvcheck
+    res = 0
     try:
         pvcheck_cmd = ["pvcheck", "-F", "csv", "-f", f"{exam_dir_path}/pvcheck.test", exec_name]
-        result = subprocess.run(pvcheck_cmd, capture_output=True, text=True,
-                                timeout=10)  # aggiungere controllo quando non viene eseguito (caso 64)
-
+        result = subprocess.run(pvcheck_cmd, capture_output=True, text=True, timeout=10)
         # CSV output parsing
         csv_data = result.stdout
         fl = io.StringIO(csv_data)
         reader = csv.DictReader(fl)
         headers = reader.fieldnames
-        output_tags = headers[2:]
-
         for row in reader:
             for key, val in row.items():
                 pvcheck_csv_scores[key].append(val)
-
         scores_list = [float(values[-1]) for key, values in
                        list(pvcheck_csv_scores.items())[2:]]  # pvcheck scores range: 0-100
         norm_scores = [s / 10 for s in scores_list]
-
         weights_list = list(pvcheck_weights.values())
         total_weigths = sum(weights_list)
         norm_weights = [w / total_weigths for w in weights_list]
-
         # Weighted mean
-        metrics[tests_names[0]] = sum(v * w for v, w in zip(norm_scores, norm_weights))
-
+        res = sum(v * w for v, w in zip(norm_scores, norm_weights))
+        return res
     except FileNotFoundError:
         print("Command not found")
+        return -1
     except subprocess.TimeoutExpired:
-        return metrics
-
-    # Performance (tempo di esecuzione del programma compilato)
-    try:
-        start = time.time()
-        subprocess.run(exec_name, capture_output=True, timeout=5)
-        elapsed = time.time() - start
-
-        if result.returncode != 0:
-            metrics[tests_names[2]] = 0  # crash
-        else:
-            # mappo tempo su punteggio
-            if elapsed < 1:
-                metrics[tests_names[2]] = 10
-            elif elapsed < 2:
-                metrics[tests_names[2]] = 8
-            else:
-                metrics[tests_names[2]] = 6
-    except subprocess.TimeoutExpired:
-        print("Expired execution time")
-
-    return metrics
+        return 0
 
 
 def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weights, combined_weights, quest_weights,
