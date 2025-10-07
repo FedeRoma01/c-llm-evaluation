@@ -10,6 +10,6 @@
 
 # OBJECTIVE TEST WEIGHTS
 [tests_weights]
-pvcheck = 6.0
 warning = 2.0
 performance = 2.0
+pvcheck = 6.0

@@ -1,4 +1,4 @@
-{# user/up3.md #}
+{# up3.md #}
 # Analisi e Valutazione di Programmi in Linguaggio C
 
 ## Criteri di Valutazione

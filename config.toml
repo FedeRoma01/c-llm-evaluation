@@ -9,7 +9,8 @@ output_path = "output"
 schema_path = "utils/json schema"
 programs_path = "resources/sources"
 exam_text_path = "resources"
-prompt_path = "utils/prompt"
+sys_prompt_path = "utils/prompt/system"
+usr_prompt_path = "utils/prompt/user"
 
 
 # COMBINED RESULT
