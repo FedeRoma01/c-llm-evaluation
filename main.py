@@ -1,3 +1,5 @@
+import sys
+
 from openai import OpenAI
 from ollama import Client
 from datetime import datetime
@@ -123,15 +125,17 @@ def init_argparser() -> argparse.ArgumentParser:
     parser.add_argument('program', type=str, help="C program file to evaluate")
     parser.add_argument('--input', '-i', type=str,
                         help="Input file for the C program")
+    parser.add_argument('--context', '-cx', type=str,
+                        help="File containing program context")
     parser.add_argument('--exam', '-ex', type=str,
                         help="Directory containing program context resources")
     parser.add_argument('--config', '-cf', action="store_true",
                         help="Use preconfigured paths from the TOML file")
-    parser.add_argument('--user_prompt', '-up', type=str, default="up2.md",
+    parser.add_argument('--user_prompt', '-up', type=str, default="up3.md",
                         help="User prompt file for the model")
-    parser.add_argument('--system_prompt', '-sp', type=str, default="sp3.md",
+    parser.add_argument('--system_prompt', '-sp', type=str, default="sp4.md",
                         help="System prompt file for the model")
-    parser.add_argument('--schema', '-s', type=str, default="s3.json",
+    parser.add_argument('--schema', '-s', type=str, default="s5.json",
                         help="JSON output schema for the model")
     parser.add_argument('--model', '-m', action="store", type=str,
                         choices=['gpt-4.1-mini', 'llama3.2', 'fabric', 'deepseek-r1:1.5b'],
@@ -164,25 +168,19 @@ def main():
     llm_weights = {a["nome"]: a["peso"] for a in topics}
 
     # EXAM QUESTIONS config
-    """
-    Dipende da cosa passo in input da cl con -ex (contesto):
-    - "file.md": solo contesto, non c'è il pvcheck da fare ==> solo altri test oggettivi
-    - "cartella" (no estensione): c'è contesto e pvcheck nella stessa cartella ==> si pvcheck e altri test 
-    - niente: no pvcheck, solo altri test
-    """
-
     questions = tomllib.load(open(paths["questions_config"], "rb"))
     tests_weights = questions.get("tests_weights")
     tests = list(tests_weights.keys())
 
-    context_dir = bool(input_args.exam)
-    extension = False
-    program_input = input_args.input if (input_args.input is not None) else ""
-    if context_dir:
-        text_exam_full_path = os.path.join(paths["exam_text"], input_args.exam)
+    exam_dir = bool(input_args.exam)
+    quest_weights = {}
+    if exam_dir:
+        # exam
+        pvcheck_flag = False
         extension = os.path.splitext(os.path.basename(input_args.exam))[1]
         if not extension:
-            # pvcheck (directory case)
+            # pvcheck (argument is a directory case)
+            text_exam_full_path = os.path.join(paths["exam_text"], input_args.exam)
             quest_weights = questions.get("questions_weights")
             last_file_flag = False
             for file in os.listdir(text_exam_full_path):
@@ -198,20 +196,28 @@ def main():
                     if last_file_flag:
                         break
                     last_file_flag = True
+                elif file == "pvcheck.test":
+                    pvcheck_flag = True
+            if (not last_file_flag) and (not pvcheck_flag):
+                sys.exit("--exam argument doesn't contain expected files (.dat, .md, pvcheck.test)")
         else:
-            # File case
-            file_target = text_exam_full_path
+            # argument is not a directory
+            sys.exit("--exam argument passed isn't a directory")
+    else:
+        # not exam
+        program_input = os.path.join(paths["exam_text"], input_args.input if (input_args.input is not None) else "")
+        file_target = os.path.join(paths["exam_text"],  input_args.context if (input_args.context is not None) else "")
 
-        # Get exam text for input context
-        text_exam = load_file(file_target)
-        text_exam = "```markdown\n" + text_exam + "\n```"
+    # Load context text
+    context = load_file(file_target)
+    context = "```markdown\n" + context + "\n```"
 
     # Objective tests
     metrics = {tests[i]: -1 for i in range(len(tests))}  # range 0-10
     metrics[tests[0]] = compilation_test(program_path)
     metrics[tests[1]] = time_test(program_input)
-    if context_dir and (not extension):
-        pvcheck_csv_scores = defaultdict(list)
+    pvcheck_csv_scores = defaultdict(list)
+    if exam_dir:
         metrics[tests[2]] = pvcheck_test(quest_weights, pvcheck_csv_scores, text_exam_full_path)
 
     # JSON schema
@@ -246,11 +252,11 @@ def main():
     sys_template = env.get_template("sp4.md")
     usr_template = env.get_template("up3.md")
     context = {
-        "context_flag": context_dir,
+        "context_flag": exam_dir or bool(context),
         "schema_flag": False,
         "schema": schema,
         "argomenti": args_md,
-        "testo_consegna": text_exam,
+        "testo_consegna": context,
         "programma": program,
     }
     system_prompt = sys_template.render(context)
@@ -269,33 +275,27 @@ def main():
     """
     else:
         dest_dir = "fabric"
-        parsed = run_fabric(text_exam, schema, args_md, program)
+        parsed = run_fabric(context, schema, args_md, program)
     """
 
     #print("RISULTATO: \n", parsed)
 
     # Combine scores
-    if context_dir:
-        combined = compute_final_score(
-            metrics, parsed, tests_weights, llm_weights,
-            combined_weights, quest_weights, pvcheck_csv_scores
-        )
+    combined = compute_final_score(
+        metrics, parsed, tests_weights, llm_weights,
+        combined_weights, quest_weights, pvcheck_csv_scores
+    )
 
     # Saving
     timestamp = datetime.now().strftime("%H-%M-%S")
-    exam_date = f"{input_args.exam}_" if context_dir else ""
+    exam_date = f"{input_args.exam}_" if exam_dir else ""
     output_file_name = f"{exam_date}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
     output_file_path = os.path.join(paths["output"], dest_dir, output_file_name)
     with open(output_file_path, "w", encoding="utf-8") as f:
-        if context_dir:
-            json.dump({
-                "LLM": parsed,
-                "risultato_finale": combined
-            }, f, indent=2, ensure_ascii=False)
-        else:
-            json.dump({
-                "LLM": parsed,
-             }, f, indent=2, ensure_ascii=False)
+        json.dump({
+            "LLM": parsed,
+            "risultato_finale": combined
+        }, f, indent=2, ensure_ascii=False)
 
     print(f"Output saved in {output_file_path}")
 

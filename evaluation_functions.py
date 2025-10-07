@@ -87,10 +87,17 @@ def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weigh
     # Tests score
     tests_names = list(tests_weights.keys())
     tests_score = 0
+    tests_weights_sum = 0
     for test in tests_names:
-        tests_score += tests_weights[test] * objective_metrics.get(test, 0)
-    tests_weights_sum = sum(tests_weights.values())
+        if objective_metrics.get(test, 0) != -1:
+            # don't consider not done tests (with -1 value)
+            tests_score += tests_weights[test] * objective_metrics.get(test, 0)
+            tests_weights_sum += tests_weights[test]
+        else:
+            objective_metrics[test] = "Not executed"
+            tests_weights[test] = "Not considered"
     tests_score = tests_score / tests_weights_sum
+
 
     # LLM score
     llm_score = 0
