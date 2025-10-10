@@ -170,7 +170,7 @@ This command evaluates `prova.c` against the exam resources in `20220728/` using
 #### Execution without pvcheck
 
 ```bash
-uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m gpt-4.1-mini -up up3.md -sp sp4.md -s s5.json
+uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
 ```
 This command evaluates `prova.c` without any context using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
 
