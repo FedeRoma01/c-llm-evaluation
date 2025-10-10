@@ -5,13 +5,12 @@
 questions = "utils/config/questions.toml"
 llm = "utils/config/llm.toml"
 output_path = "output"
-# Default argument file paths (not to be considered if config = False)
+# -cf to enable the following paths
 schema_path = "utils/json schema"
 programs_path = "resources/sources"
 exam_text_path = "resources"
 sys_prompt_path = "utils/prompt/system"
 usr_prompt_path = "utils/prompt/user"
-
 
 # COMBINED RESULT
 [combined_weights]

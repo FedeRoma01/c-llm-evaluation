@@ -2,46 +2,50 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "valutazione": {
+    "evaluations": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "nome": { "type": "string" },
-          "punteggio": { "type": "integer" },
-          "evidenze": {
+          "name": { "type": "string" },
+          "score": { "type": "integer" },
+          "evidences": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "commento": { "type": "string" },
-                "righe": {
+                "comment": { "type": "string" },
+                "lines": {
                   "type": "array",
                   "items": { "type": "string", "pattern": "^\\d+(-\\d+)?$" },
                   "default": []
+                },
+                "criticality": {
+                  "type": "string",
+                  "enum": ["high", "medium", "low"]
                 }
               },
-              "required": ["commento", "righe"]
+              "required": ["comment", "lines", "criticality"]
             }
           }
         },
-        "required": ["nome", "punteggio", "evidenze"]
+        "required": ["name", "score", "evidences"]
       }
     },
-    "problemi_prioritari": {
+    "priority issues": {
       "type": "array",
       "items": { "type": "string" }
     },
-    "suggerimenti_concreti": {
+    "practical_tips": {
       "type": "array",
       "items": { "type": "string" }
     }
   },
   "required": [
-    "valutazione",
-    "problemi_prioritari",
-    "suggerimenti_concreti"
+    "evaluations",
+    "priority issues",
+    "practical_tips"
   ]
 }

@@ -33,7 +33,7 @@ Per ogni argomento:
 
 ### Passo 3: Assegnazione punteggio
 - Assegna a ogni argomento un punteggio da 0 a 10.
-- Giustifica il punteggio con commenti precisi e dettagliati, facendo riferimento esclusivamente ai numeri di riga già presenti nel codice (es. `[15, 18, 22-25]`), inserendo ogni numero o intervallo come elemento separato di un array.
+- Giustifica il punteggio con commenti precisi e dettagliati, facendo riferimento esclusivamente ai numeri di riga già presenti nel codice (es. `[15, 18, 22-25]`), inserendo ogni numero o intervallo come elemento separato di un array. Non usare più elementi per numeri di righe consecutive ma utilizza intervalli (e.g., non [1, 2, 3, 4] ma [1-4]). 
 
 ### Passo 4: Individuazione problemi critici e suggerimenti
 - Elenca i problemi più gravi riscontrati nel codice.

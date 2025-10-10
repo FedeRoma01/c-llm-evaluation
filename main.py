@@ -34,7 +34,10 @@ def run_openai(sys_prompt, usr_prompt, schema, model):
         },
         temperature=0
     )
-    return json.loads(response.output[0].content[0].text)
+    return (
+        json.loads(response.output[0].content[0].text),
+        response.usage.model_dump()
+    )
 
 
 def run_ollama(sys_prompt, usr_prompt, schema, model):
@@ -131,16 +134,40 @@ def init_argparser() -> argparse.ArgumentParser:
                         help="Directory containing program context resources")
     parser.add_argument('--config', '-cf', action="store_true",
                         help="Use preconfigured paths from the TOML file")
-    parser.add_argument('--user_prompt', '-up', type=str, default="up3.md",
+    parser.add_argument('--user_prompt', '-up', type=str, default="up4.md",
                         help="User prompt file for the model")
-    parser.add_argument('--system_prompt', '-sp', type=str, default="sp4.md",
+    parser.add_argument('--system_prompt', '-sp', type=str, default="sp5.md",
                         help="System prompt file for the model")
     parser.add_argument('--schema', '-s', type=str, default="s5.json",
                         help="JSON output schema for the model")
     parser.add_argument('--model', '-m', action="store", type=str,
-                        choices=['gpt-4.1-mini', 'llama3.2', 'fabric', 'deepseek-r1:1.5b'],
+                        choices=['gpt-4.1-mini', 'gpt-4.1-nano', 'llama3.2', 'fabric', 'deepseek-r1:1.5b'],
                         default="gpt-4.1-mini", help='Model to use for evaluation')
     return parser
+
+
+def compute_cost(model_name, tokens_count, pricing_data):
+
+    if model_name not in pricing_data.keys():
+        return f"Model {model_name} not in config.toml"
+
+    model_prices = pricing_data[model_name]
+    tot_cost = 0
+    for token_type, count in tokens_count.items():
+        if token_type not in model_prices:
+            continue
+        rate = model_prices[token_type] # USD per 1M tokens
+        tot_cost += (count / 1000000) * rate
+    return tot_cost
+
+
+def reshape_usage(usage):
+    reshaped = {
+        **{k: v for k, v in usage.items() if not k.endswith("_details")},
+        **usage["input_tokens_details"],
+        **usage["output_tokens_details"]
+    }
+    return reshaped
 
 
 def main():
@@ -163,9 +190,10 @@ def main():
 
     # LLM
     llm_config = tomllib.load(open(paths["llm_config"], "rb"))
-    topics = llm_config.get("argomenti")
-    analysis = llm_config.get("analisi")
-    llm_weights = {a["nome"]: a["peso"] for a in topics}
+    topics = llm_config.get("topics")
+    analysis = llm_config.get("analysis")
+    llm_weights = {a["name"]: a["weight"] for a in topics}
+    pricing = llm_config.get("models")
 
     # EXAM QUESTIONS config
     questions = tomllib.load(open(paths["questions_config"], "rb"))
@@ -174,32 +202,39 @@ def main():
 
     exam_dir = bool(input_args.exam)
     quest_weights = {}
+    pvcheck_flag = False
     if exam_dir:
         # exam
-        pvcheck_flag = False
         extension = os.path.splitext(os.path.basename(input_args.exam))[1]
         if not extension:
             # pvcheck (argument is a directory case)
             text_exam_full_path = os.path.join(paths["exam_text"], input_args.exam)
             quest_weights = questions.get("questions_weights")
-            last_file_flag = False
-            for file in os.listdir(text_exam_full_path):
-                # program input
-                if file.endswith(".dat"):
-                    program_input = os.path.join(text_exam_full_path, file)
-                    if last_file_flag:
+
+            # Lists for saving file names found
+            dat_files = []
+            md_files = []
+            with os.scandir(text_exam_full_path) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        if entry.name == "pvcheck.test":
+                            pvcheck_flag = True
+                        elif entry.name.endswith(".dat") and not dat_files:
+                            dat_files.append(entry.name)
+                        elif entry.name.endswith(".md") and not md_files:
+                            md_files.append(entry.name)
+
+                    # stop if all type of files found
+                    if pvcheck_flag and dat_files and md_files:
                         break
-                    last_file_flag = True
-                # context file
-                elif file.endswith(".md"):
-                    file_target = os.path.join(text_exam_full_path, file)
-                    if last_file_flag:
-                        break
-                    last_file_flag = True
-                elif file == "pvcheck.test":
-                    pvcheck_flag = True
-            if (not last_file_flag) and (not pvcheck_flag):
-                sys.exit("--exam argument doesn't contain expected files (.dat, .md, pvcheck.test)")
+
+            if not (pvcheck_flag and dat_files and md_files):
+                sys.exit("--exam argument doesn't contain all expected files (.dat, .md, pvcheck.test)")
+            else:
+                # take first element found
+                program_input = os.path.join(text_exam_full_path, dat_files[0])
+                file_target = os.path.join(text_exam_full_path, md_files[0])
+
         else:
             # argument is not a directory
             sys.exit("--exam argument passed isn't a directory")
@@ -217,7 +252,7 @@ def main():
     metrics[tests[0]] = compilation_test(program_path)
     metrics[tests[1]] = time_test(program_input)
     pvcheck_csv_scores = defaultdict(list)
-    if exam_dir:
+    if exam_dir and pvcheck_flag:
         metrics[tests[2]] = pvcheck_test(quest_weights, pvcheck_csv_scores, text_exam_full_path)
 
     # JSON schema
@@ -227,7 +262,7 @@ def main():
 
     # Prompt construction
     args_md = "\n".join(
-        f"- **{a['nome']}**: {a['descrizione']}" for a in topics + analysis
+        f"- **{a['name']}**: {a['description']}" for a in topics + analysis
     )
 
     # Get prompts paths
@@ -255,9 +290,9 @@ def main():
         "context_flag": exam_dir or bool(context),
         "schema_flag": False,
         "schema": schema,
-        "argomenti": args_md,
-        "testo_consegna": context,
-        "programma": program,
+        "topics": args_md,
+        "context": context,
+        "program": program,
     }
     system_prompt = sys_template.render(context)
     system_prompt = "```markdown\n" + system_prompt + "\n```"
@@ -267,10 +302,8 @@ def main():
     # Model selection
     model = input_args.model
     if model == "gpt-4.1-mini":
-        dest_dir = "GPTAnalysis"
-        parsed = run_openai(system_prompt, user_prompt, schema, model="gpt-4.1-mini")
+        parsed, tokens = run_openai(system_prompt, user_prompt, schema, model="gpt-4.1-mini")
     elif model in {"llama3.2", "deepseek-r1:1.5b"}:
-        dest_dir = model
         parsed = run_ollama(system_prompt, user_prompt, schema, model="llama3.2")
     """
     else:
@@ -278,23 +311,28 @@ def main():
         parsed = run_fabric(context, schema, args_md, program)
     """
 
-    #print("RISULTATO: \n", parsed)
-
     # Combine scores
     combined = compute_final_score(
         metrics, parsed, tests_weights, llm_weights,
         combined_weights, quest_weights, pvcheck_csv_scores
     )
 
+    # Request cost computation
+    reshaped = reshape_usage(tokens)
+    call_cost = compute_cost(model, reshaped, pricing)
+
     # Saving
     timestamp = datetime.now().strftime("%H-%M-%S")
     exam_date = f"{input_args.exam}_" if exam_dir else ""
     output_file_name = f"{exam_date}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
-    output_file_path = os.path.join(paths["output"], dest_dir, output_file_name)
+    output_file_path = os.path.join(paths["output"], model, output_file_name)
+    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
     with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump({
             "LLM": parsed,
-            "risultato_finale": combined
+            "usage": tokens,
+            "call_cost": call_cost,
+            **combined
         }, f, indent=2, ensure_ascii=False)
 
     print(f"Output saved in {output_file_path}")

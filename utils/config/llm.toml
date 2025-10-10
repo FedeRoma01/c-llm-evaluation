@@ -1,61 +1,72 @@
 # LLM config file
 
+# USD / 1M tokens
+[models."gpt-4.1-mini"]
+input_tokens = 0.80
+cached_tokens = 0.20
+output_tokens = 3.20
+
+[models."gpt-4.1-nano"]
+input_tokens = 0.20
+cached_tokens = 0.05
+output_tokens = 0.80
+
 # EVALUATED TOPICS
-[[argomenti]]
-nome = "Strutture di controllo"
-peso = 1.0
-descrizione = "Valutare correttezza e appropriatezza nell’uso di if/else, switch/case, cicli for/while/do...while, gestione di break/continue/return e chiarezza del flusso di controllo."
+[[topics]]
+name = "Control structures"
+weight = 1.0
+description = "Evaluate correctness and appropriateness in the use of if/else, switch/case, for/while/do...while loops, handling of break/continue/return, and clarity of control flow."
 
-[[argomenti]]
-nome = "Tipi di dati"
-peso = 1.0
-descrizione = "Valutare scelta e uso dei tipi primitivi (int, float, double, char, bool), coerenza dei tipi, correttezza dei cast, gestione di costanti e precisione numerica."
+[[topics]]
+name = "Data types"
+weight = 1.0
+description = "Evaluate the choice and use of primitive types (int, float, double, char, bool), type consistency, correctness of casts, management of constants, and numerical precision."
 
-[[argomenti]]
-nome = "Funzioni"
-peso = 1.3
-descrizione = "Valutare modularità del codice, chiarezza dei parametri, riusabilità, uso corretto di valori di ritorno e gestione dello scope delle variabili. Per ciascuna funzione valutare se le funzioni eseguono correttamente il loro compito."
+[[topics]]
+name = "Functions"
+weight = 1.3
+description = "Evaluate code modularity, clarity of parameters, reusability, correct use of return values, and management of variable scope. For each function, assess whether it correctly performs its intended task."
 
-[[argomenti]]
-nome = "Tipi di dati derivati"
-peso = 1.0
-descrizione = "Valutare utilizzo di array, stringhe e struct, correttezza degli indici, inizializzazione, accesso ai dati e manipolazione sicura delle stringhe."
+[[topics]]
+name = "Derived data types"
+weight = 1.0
+description = "Evaluate the use of arrays, strings, and structs, correctness of indexing, initialization, data access, and safe string manipulation."
 
-[[argomenti]]
-nome = "Utilizzo dei file"
-peso = 1.2
-descrizione = "Valutare uso di fopen, fclose, fread, fwrite, fprintf, fscanf, gestione corretta dei puntatori a file, verifica errori e chiusura appropriata."
+[[topics]]
+name = "File handling"
+weight = 1.2
+description = "Evaluate the use of fopen, fclose, fread, fwrite, fprintf, fscanf, correct management of file pointers, error checking, and proper file closure."
 
-[[argomenti]]
-nome = "Puntatori"
-peso = 1.3
-descrizione = "Valutare comprensione di indirizzi e dereferenziazione, uso per passaggio parametri, gestione dinamica della memoria (malloc, calloc, free), prevenzione di memory leak e dangling pointer."
+[[topics]]
+name = "Pointers"
+weight = 1.3
+description = "Evaluate understanding of addresses and dereferencing, use for parameter passing, dynamic memory management (malloc, calloc, free), and prevention of memory leaks and dangling pointers."
 
-[[argomenti]]
-nome = "Classi di memorizzazione"
-peso = 0.3
-descrizione = "Valutare conoscenza e uso di auto, static, extern, register, comprensione dello scope, durata delle variabili e impatto sulle prestazioni."
+[[topics]]
+name = "Storage classes"
+weight = 0.3
+description = "Evaluate knowledge and use of auto, static, extern, register; understanding of variable scope and lifetime, and impact on performance."
 
-[[argomenti]]
-nome = "Gli operatori"
-peso = 0.7
-descrizione = "Valutare uso corretto di operatori aritmetici, logici, relazionali e bitwise, comprensione di priorità e associatività, uso appropriato di incremento/decremento, assegnazioni composte e operatore ternario."
+[[topics]]
+name = "Operators"
+weight = 0.7
+description = "Evaluate correct use of arithmetic, logical, relational, and bitwise operators, understanding of precedence and associativity, appropriate use of increment/decrement, compound assignments, and the ternary operator."
 
-[[argomenti]]
-nome = "Ordinamento"
-peso = 1.2
-descrizione = "Valutare implementazione di algoritmi di ordinamento come qsort oppure il corretto utilizzo della stessa nel caso in cui venga utilizzata. Considera come aspetti correttezza, efficienza e gestione dei casi limite."
+[[topics]]
+name = "Sorting"
+weight = 1.2
+description = "Evaluate implementation of sorting algorithms such as qsort or correct usage thereof when applied. Consider aspects such as correctness, efficiency, and handling of edge cases."
 
-[[argomenti]]
-nome = "Stile di programmazione"
-peso = 0.8
-descrizione = "Valutare leggibilità generale: indentazione, naming coerente, commenti, organizzazione in file, aderenza a uno stile chiaro e uniforme."
+[[topics]]
+name = "Programming style"
+weight = 0.8
+description = "Evaluate overall readability: indentation, consistent naming, comments, file organization, and adherence to a clear and uniform coding style."
 
 # SUMMARY ANALYSIS
-[[analisi]]
-nome = "problemi prioritari"
-descrizione = "Menziona i problemi principali emersi nell'analisi dei vari argomenti spiegando dove sono e in cosa consistono i problemi"
+[[analysis]]
+name = "priority issues"
+description = "Mention the main problems identified in the analysis of the various topics, explaining where they occur and what they consist of."
 
-[[analisi]]
-nome = "suggerimenti concreti"
-descrizione = "Sulla base dei problemi evidenziati proponi suggerimenti concreti con lo scopo di migliorare e correggere il programma nei punti in cui tali si presentano tali problemi"
+[[analysis]]
+name = "concrete suggestions"
+description = "Based on the highlighted problems, provide concrete suggestions aimed at improving and correcting the program in the areas where such issues occur."

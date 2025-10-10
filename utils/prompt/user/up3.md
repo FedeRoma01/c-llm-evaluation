@@ -3,7 +3,7 @@
 
 ## Criteri di Valutazione
 
-{{ argomenti }}
+{{ topics }}
 
 ---
 
@@ -12,12 +12,12 @@
 {% if context_flag %}
 ### Testo della consegna
 
-{{ testo_consegna }}
+{{ context }}
 {% endif %}
 
 ### Programma C
 
-{{ programma }}
+{{ program }}
 
 ---
 

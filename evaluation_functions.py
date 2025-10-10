@@ -3,6 +3,8 @@ import time
 import csv
 import io
 import os
+import platform
+from pathlib import Path
 
 
 def add_line_numbers(code: str) -> str:
@@ -16,7 +18,7 @@ def add_line_numbers(code: str) -> str:
 
 def compilation_test(file_path):
     # Gcc compilation
-    compile_cmd = ["gcc", "-Wall", "-Wextra", "-o", "a.out", file_path]
+    compile_cmd = ["gcc", "-Wall", "-Wextra", str(Path(file_path))]
     res = 0
     try:
         result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
@@ -24,21 +26,24 @@ def compilation_test(file_path):
         res = max(0, 10 - warnings)
         if result.returncode != 0:
             print("Compilation error")
+            return 0
     except subprocess.TimeoutExpired:
         print("Expired compilation")
+        return 0
     return res
 
 
-def time_test(p_input, exec_name="./a.out"):
+def time_test(p_input):
     # Time performance
     res = 0
     try:
-        compile_cmd = [exec_name, p_input]
+        exec_name = "a.out" if platform.system() != "Windows" else "a.exe"
+        compile_cmd = [f"./{exec_name}", str(Path(p_input))]
         start = time.time()
         result = subprocess.run(compile_cmd, capture_output=True, timeout=5)
         elapsed = time.time() - start
         if result.returncode != 0:
-            print("Program exited with an error or crashed")
+            print("Program exited with an error or crashed: error", result.returncode)
         else:
             if elapsed < 1:
                 res = 10
@@ -52,12 +57,16 @@ def time_test(p_input, exec_name="./a.out"):
     return res
 
 
-def pvcheck_test(pvcheck_weights, pvcheck_csv_scores, exam_dir_path, exec_name="./a.out"):
+def pvcheck_test(pvcheck_weights, pvcheck_csv_scores, exam_dir_path):
     # Test con pvcheck
     res = 0
     try:
-        pvcheck_cmd = ["pvcheck", "-F", "csv", "-f", f"{exam_dir_path}/pvcheck.test", exec_name]
+        exec_name = "a.out" if platform.system() != "Windows" else "a.exe"
+        pvcheck_cmd = ["pvcheck", "-F", "csv", "-f", os.path.join(exam_dir_path, "pvcheck.test"), f"./{exec_name}"]
         result = subprocess.run(pvcheck_cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode != 0:
+            print("Pvcheck not exectued: error", result.returncode)
+
         # CSV output parsing
         csv_data = result.stdout
         fl = io.StringIO(csv_data)
@@ -72,12 +81,15 @@ def pvcheck_test(pvcheck_weights, pvcheck_csv_scores, exam_dir_path, exec_name="
         weights_list = list(pvcheck_weights.values())
         total_weigths = sum(weights_list)
         norm_weights = [w / total_weigths for w in weights_list]
+
         # Weighted mean
         res = sum(v * w for v, w in zip(norm_scores, norm_weights))
         return res
+
     except FileNotFoundError:
         print("Command not found")
         return -1
+
     except subprocess.TimeoutExpired:
         return 0
 
@@ -102,9 +114,9 @@ def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weigh
     # LLM score
     llm_score = 0
     llm_metrics_spec = {}
-    for arg in llm_metrics["valutazione"]:
-        llm_metrics_spec[arg["nome"]] = arg["punteggio"]
-        llm_score += arg["punteggio"] * llm_weights[arg["nome"]]
+    for arg in llm_metrics["evaluations"]:
+        llm_metrics_spec[arg["name"]] = arg["score"]
+        llm_score += arg["score"] * llm_weights[arg["name"]]
     llm_score = llm_score / sum(llm_weights.values())
 
     # Final score
@@ -112,10 +124,10 @@ def compute_final_score(objective_metrics, llm_metrics, tests_weights, llm_weigh
     final_score = (combined_weights["tests"] * tests_score + combined_weights["llm"] * llm_score) / combined_weights_sum
 
     return {
-        "risultati pvcheck": {k: [float(x) for x in v] for k, v in list(pvcheck_csv_scores.items())[2:]},
-        "oggettivi": {**objective_metrics, "totale": tests_score},
-        "LLM": {**llm_metrics_spec, "totale": llm_score},
-        "finale": final_score,
-        "pesi": {"domande": quest_weights, "oggettivi": tests_weights, "LLM": llm_weights,
-                 "combinazione finale": combined_weights}
+        "pvcheck": {k: [(float(x) if x != "MISS" else 0) for x in v] for k, v in list(pvcheck_csv_scores.items())[2:]},
+        "tests_scores": {**objective_metrics, "final": tests_score},
+        "llm_scores": {**llm_metrics_spec, "final": llm_score},
+        "final_score": final_score,
+        "weights": {"pvcheck_questions": quest_weights, "tests": tests_weights, "llm": llm_weights,
+                    "final": combined_weights}
     }
