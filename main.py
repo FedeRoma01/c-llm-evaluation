@@ -315,7 +315,7 @@ def main():
 
     # CONTEXT
     context = load_file(file_target)
-    #context = "```markdown\n" + context + "\n```"
+    context = "```markdown\n" + context + "\n```"
 
     # OBJECTIVE TESTS
     metrics = {t: -1 for t in tests}

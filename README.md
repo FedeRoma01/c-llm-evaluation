@@ -115,11 +115,25 @@ The repository is organized as follows:
 
 ### Pre requisites
 
-In order to be able to use some models, like gpt-4.1-mini, an API-key is required.
-To use it, you have to set it as a environment variable:
+### LLM Model API Key Requirements
 
+To use LLM models, an API key is required. Two types of keys are supported depending on the chosen model: `openrouter_api_key` and `openai_api_key`.
+
+- **`openrouter_api_key`**: This key is used when the provider is not explicitly specified. In this case, OpenRouter automatically selects the appropriate provider for the requested model, handling API usage and costs according to the parameters provided in the request.
+
+- **`openai_api_key`**: This key is used when the specified provider is `OpenAI`. API calls are made directly to OpenAI, bypassing OpenRouter, and usage is billed according to OpenAI's pricing.
+
+To use them, you have to set it as a environment variable:
+
+**macOS/Linux**:
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
+export OPENROUTER_API_KEY="your_api_key_here"
+```
+**Windows**:
+```bash
+setx OPENAI_API_KEY "your_api_key_here"
+setx OPENROUTER_API_KEY "your_api_key_here"
 ```
 
 ### Execute the program
