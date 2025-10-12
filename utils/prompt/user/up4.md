@@ -17,7 +17,9 @@
 
 ### C Program
 
+```c
 {{ program }}
+```
 
 ---
 

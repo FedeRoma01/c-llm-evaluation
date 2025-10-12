@@ -1,7 +1,5 @@
 import sys
-
 from openai import OpenAI
-from ollama import Client
 from datetime import datetime
 from collections import defaultdict
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -9,89 +7,164 @@ import os
 import json
 import tomllib
 import argparse
-
+import re
+import requests
 from evaluation_functions import (
     add_line_numbers, compilation_test, pvcheck_test, time_test, compute_final_score
 )
 
 
-def run_openai(sys_prompt, usr_prompt, schema, model):
-    """Execute an OpenAI API call with structured JSON output"""
-    client = OpenAI()
-    response = client.responses.create(
-        model=model,
-        input=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": usr_prompt}
-        ],
-        text={
-            "format": {
+def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=False):
+    """Execute an API call using OpenRouter with structured JSON output"""
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY")
+    )
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": usr_prompt}
+            ],
+            response_format={
                 "type": "json_schema",
-                "name": "response_schema",
+                "json_schema": {
+                    "name": "output_schema",
+                    "strict": True,
+                    "schema": schema
+                }
+            },
+            temperature=0
+        )
+    except Exception as e:
+        raise RuntimeError(f"OpenRouter API call failed: {e}")
+
+    if debug:
+        print(response)
+
+    # Robust extraction
+    content = getattr(response.choices[0].message, "content", None)
+    if not content:
+        raise RuntimeError(f"Empty or malformed response: {response}")
+
+    try:
+        parsed = json.loads(content.strip())
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON in response: {content}") from e
+
+    return parsed, response.usage.model_dump()
+
+
+def run_router_request(sys_prompt, usr_prompt, schema, model, prompt_max_price, completion_max_price, debug=False):
+    """Execute direct OpenRouter API call with explicit provider control and price constraints."""
+    key = os.getenv("OPENROUTER_API_KEY")
+    if not key:
+        raise EnvironmentError("Missing OPENROUTER_API_KEY")
+
+    headers = {
+        'Authorization': f"Bearer {key}",
+        'Content-Type': 'application/json',
+    }
+
+    payload = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': sys_prompt},
+            {'role': 'user', 'content': usr_prompt}
+        ],
+        'response_format': {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "output_schema",
                 "strict": True,
                 "schema": schema
             }
         },
-        temperature=0
-    )
-    return (
-        json.loads(response.output[0].content[0].text),
-        response.usage.model_dump()
-    )
-
-
-def run_ollama(sys_prompt, usr_prompt, schema, model):
-    """Execute an Ollama API call with structured JSON output."""
-    client = Client()
-    schema_str = json.dumps(schema, indent=2, ensure_ascii=False)
-    sys_prompt = sys_prompt.replace("{{ schema }}", schema_str)
-
-    response = client.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": usr_prompt}
-        ],
-        options={
-            "temperature": 0,
-            "top_k": 10
+        'provider': {
+            'sort': 'price',
+            'max_price': {"prompt": prompt_max_price, "completion": completion_max_price},
+            'allow_fallbacks': True     # to customize set this False and specify providers to be used
+                                        # as fallbacks with "order": [providers]
         },
-        format=schema
-    )
-
-    output_text = response.message.content.strip()
-    if output_text.startswith("```") and output_text.endswith("```"):
-        output_text = "\n".join(output_text.split("\n")[1:-1])
-
-    parsed = json.loads(output_text)
-    with open("prova_ollama.json", "w", encoding="utf-8") as f:
-        json.dump(parsed, f, ensure_ascii=False, indent=2)
-
-    return parsed
-
-
-def run_fabric(exam, schema, args, program):
-    """
-    fab = Fabric()
-    result = fab.run(
-        pattern="evaluate_c",
-        inputs={
-            "schema": f"{schema}",
-            "argomenti": args,
-            "testo d'esame": exam,
-            "programma": program
-        }
-    )
+        'temperature': 0,
+        'structured_output': True,
+        'usage': {'include': True}
+    }
 
     try:
-        output_json = json.loads(result.output)
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=60
+        )
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException as e:
+        raise RuntimeError(f"OpenRouter HTTP error: {e}")
     except json.JSONDecodeError as e:
-        print("Errore nel parsing del JSON:")
-        print(result.ouput)
-        return None
+        raise RuntimeError(f"Invalid JSON from OpenRouter: {response.text}") from e
 
-    return output_json
-    """
+    if debug:
+        print(data)
+
+    try:
+        message = data["choices"][0]["message"]
+        content = message.get("content", "").strip()
+
+        # Fallback: if content empty, try to extract from reasoning field
+        if not content:
+            reasoning = message.get("reasoning", "")
+            if reasoning:
+                # try to extract json between triple backticks
+                match = re.search(r"```json\s*(\{.*\})\s*```", reasoning, re.DOTALL)
+                if match:
+                    content = match.group(1).strip()
+                else:
+                    content = reasoning.strip()
+
+        parsed = json.loads(content)
+    except (KeyError, json.JSONDecodeError) as e:
+        raise ValueError(f"Malformed OpenRouter response: {data}") from e
+
+    return parsed, data.get("usage", {}), data.get("provider")
+
+
+def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
+    """Execute an OpenAI API call with structured JSON output"""
+    client = OpenAI()
+    try:
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": usr_prompt}
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "response_schema",
+                    "strict": True,
+                    "schema": schema
+                }
+            },
+            temperature=0
+        )
+    except Exception as e:
+        raise RuntimeError(f"OpenAI API call failed: {e}")
+
+    if debug:
+        print(response)
+
+    try:
+        text = response.output[0].content[0].text
+        parsed = json.loads(text)
+    except (AttributeError, IndexError, json.JSONDecodeError) as e:
+        raise ValueError(f"Malformed or invalid JSON in OpenAI response: {response}") from e
+
+    return parsed, response.usage.model_dump()
 
 
 def get_paths(config: dict, config_flag: bool) -> dict:
@@ -126,6 +199,7 @@ def init_argparser() -> argparse.ArgumentParser:
     """Define command-line arguments."""
     parser = argparse.ArgumentParser(description='Evaluates a given C program')
     parser.add_argument('program', type=str, help="C program file to evaluate")
+    parser.add_argument('model', type=str, help='Model to use for evaluation')
     parser.add_argument('--input', '-i', type=str,
                         help="Input file for the C program")
     parser.add_argument('--context', '-cx', type=str,
@@ -140,16 +214,20 @@ def init_argparser() -> argparse.ArgumentParser:
                         help="System prompt file for the model")
     parser.add_argument('--schema', '-s', type=str, default="s5.json",
                         help="JSON output schema for the model")
-    parser.add_argument('--model', '-m', action="store", type=str,
-                        choices=['gpt-4.1-mini', 'gpt-4.1-nano', 'llama3.2', 'fabric', 'deepseek-r1:1.5b'],
-                        default="gpt-4.1-mini", help='Model to use for evaluation')
+    parser.add_argument('--provider', '-pr', type=str,
+                        help='Provider for the model to use')
+    parser.add_argument('--prompt_price', '-pp', type=float, default=0,
+                        help='Max price for 1M tokens for the the prompt')
+    parser.add_argument('--completion_price', '-cp', type=float, default=0,
+                        help='Max price for 1M tokens for the completion')
     return parser
 
 
 def compute_cost(model_name, tokens_count, pricing_data):
 
     if model_name not in pricing_data.keys():
-        return f"Model {model_name} not in config.toml"
+        # OPENAI: return f"Model {model_name} not in config.toml"
+        return "Prices not specified in llm.toml"
 
     model_prices = pricing_data[model_name]
     tot_cost = 0
@@ -161,7 +239,7 @@ def compute_cost(model_name, tokens_count, pricing_data):
     return tot_cost
 
 
-def reshape_usage(usage):
+def openai_reshape_usage(usage):
     reshaped = {
         **{k: v for k, v in usage.items() if not k.endswith("_details")},
         **usage["input_tokens_details"],
@@ -170,123 +248,102 @@ def reshape_usage(usage):
     return reshaped
 
 
+def make_safe_dirname(s: str) -> str:
+
+    # Replace any character that is not alphanumeric, dash, or underscore with _
+    safe_name = re.sub(r'[^a-zA-Z0-9-_]', '_', s)
+
+    # Optionally, collapse multiple underscores
+    safe_name = re.sub(r'_+', '_', safe_name)
+
+    # Strip leading/trailing underscores
+    safe_name = safe_name.strip('_')
+
+    return safe_name
+
+
 def main():
     parser = init_argparser()
     input_args = parser.parse_args()
     path_flag = input_args.config
 
-    # CONFIGURATION DATA RETRIEVAL
-
-    # General config
+    # CONFIGURATION LOAD
     general_config = tomllib.load(open("config.toml", "rb"))
     paths = get_paths(general_config, path_flag)
     combined_weights = general_config.get("combined_weights")
 
-    # Get program file and name
+    # PROGRAM LOAD
     program_path = os.path.join(paths["programs"], input_args.program)
     program_name = os.path.splitext(os.path.basename(program_path))[0]
-    program = load_file(program_path)
-    program = add_line_numbers(program)
+    program = add_line_numbers(load_file(program_path))
 
-    # LLM
+    # LLM CONFIG LOAD
     llm_config = tomllib.load(open(paths["llm_config"], "rb"))
-    topics = llm_config.get("topics")
-    analysis = llm_config.get("analysis")
+    topics, analysis = llm_config["topics"], llm_config["analysis"]
     llm_weights = {a["name"]: a["weight"] for a in topics}
-    pricing = llm_config.get("models")
+    pricing = llm_config["models"]
 
-    # EXAM QUESTIONS config
+    # QUESTIONS CONFIG LOAD
     questions = tomllib.load(open(paths["questions_config"], "rb"))
-    tests_weights = questions.get("tests_weights")
+    tests_weights = questions["tests_weights"]
     tests = list(tests_weights.keys())
 
+    # EXAM / CONTEXT HANDLING
     exam_dir = bool(input_args.exam)
-    quest_weights = {}
     pvcheck_flag = False
+    quest_weights, program_input, file_target = {}, "", ""
+
     if exam_dir:
-        # exam
-        extension = os.path.splitext(os.path.basename(input_args.exam))[1]
-        if not extension:
-            # pvcheck (argument is a directory case)
-            text_exam_full_path = os.path.join(paths["exam_text"], input_args.exam)
-            quest_weights = questions.get("questions_weights")
-
-            # Lists for saving file names found
-            dat_files = []
-            md_files = []
-            with os.scandir(text_exam_full_path) as entries:
-                for entry in entries:
-                    if entry.is_file():
-                        if entry.name == "pvcheck.test":
-                            pvcheck_flag = True
-                        elif entry.name.endswith(".dat") and not dat_files:
-                            dat_files.append(entry.name)
-                        elif entry.name.endswith(".md") and not md_files:
-                            md_files.append(entry.name)
-
-                    # stop if all type of files found
-                    if pvcheck_flag and dat_files and md_files:
-                        break
+        exam_path = os.path.join(paths["exam_text"], input_args.exam)
+        if not os.path.splitext(input_args.exam)[1]:  # directory case
+            entries = {e.name for e in os.scandir(exam_path) if e.is_file()}
+            pvcheck_flag = "pvcheck.test" in entries
+            dat_files = [f for f in entries if f.endswith(".dat")]  # program input
+            md_files = [f for f in entries if f.endswith(".md")]    # program context
 
             if not (pvcheck_flag and dat_files and md_files):
-                sys.exit("--exam argument doesn't contain all expected files (.dat, .md, pvcheck.test)")
-            else:
-                # take first element found
-                program_input = os.path.join(text_exam_full_path, dat_files[0])
-                file_target = os.path.join(text_exam_full_path, md_files[0])
+                sys.exit("--exam directory missing required files (.dat, .md, pvcheck.test)")
 
+            quest_weights = questions["questions_weights"]
+            program_input = os.path.join(exam_path, dat_files[0])
+            file_target = os.path.join(exam_path, md_files[0])
         else:
-            # argument is not a directory
-            sys.exit("--exam argument passed isn't a directory")
+            sys.exit("--exam argument must be a directory")
     else:
-        # not exam
-        program_input = os.path.join(paths["exam_text"], input_args.input if (input_args.input is not None) else "")
-        file_target = os.path.join(paths["exam_text"],  input_args.context if (input_args.context is not None) else "")
+        program_input = os.path.join(paths["exam_text"], input_args.input or "")
+        file_target = os.path.join(paths["exam_text"], input_args.context or "")
 
-    # Load context text
+    # CONTEXT
     context = load_file(file_target)
-    context = "```markdown\n" + context + "\n```"
+    #context = "```markdown\n" + context + "\n```"
 
-    # Objective tests
-    metrics = {tests[i]: -1 for i in range(len(tests))}  # range 0-10
+    # OBJECTIVE TESTS
+    metrics = {t: -1 for t in tests}
     metrics[tests[0]] = compilation_test(program_path)
     metrics[tests[1]] = time_test(program_input)
     pvcheck_csv_scores = defaultdict(list)
     if exam_dir and pvcheck_flag:
-        metrics[tests[2]] = pvcheck_test(quest_weights, pvcheck_csv_scores, text_exam_full_path)
+        metrics[tests[2]] = pvcheck_test(questions["questions_weights"], pvcheck_csv_scores, exam_path)
 
-    # JSON schema
-    schema_path = input_args.schema
-    schema = load_file(os.path.join(paths["schema"], schema_path))
+    # SCHEMA
+    schema_path = os.path.join(paths["schema"], input_args.schema)
+    schema = load_file(schema_path)
     json_name = os.path.splitext(os.path.basename(schema_path))[0]
 
-    # Prompt construction
-    args_md = "\n".join(
-        f"- **{a['name']}**: {a['description']}" for a in topics + analysis
-    )
+    # PROMPTS CONSTRUCTION
+    args_md = "\n".join(f"- **{a['name']}**: {a['description']}" for a in topics + analysis)
+    sys_prompt_path = os.path.join(paths["sys_prompt"], input_args.system_prompt)
+    usr_prompt_path = os.path.join(paths["usr_prompt"], input_args.user_prompt)
+    system_prompt_name = os.path.splitext(os.path.basename(sys_prompt_path))[0]
+    user_prompt_name = os.path.splitext(os.path.basename(usr_prompt_path))[0]
 
-    # Get prompts paths
-
-    # System prompt
-    system_prompt_path = os.path.join(paths["sys_prompt"], input_args.system_prompt)
-    system_prompt_name = os.path.splitext(os.path.basename(system_prompt_path))[0]
-
-    # User prompt
-    user_prompt_path = os.path.join(paths["usr_prompt"], input_args.user_prompt)
-    user_prompt_name = os.path.splitext(os.path.basename(user_prompt_path))[0]
-
-
-    # Fill prompts with config data
-    env = Environment(
-        loader=FileSystemLoader(
-            [os.path.dirname(user_prompt_path),
-             os.path.dirname(system_prompt_path)]
-        ),
+    env = Environment(loader=FileSystemLoader(
+        [os.path.dirname(usr_prompt_path), os.path.dirname(sys_prompt_path)]),
         autoescape=select_autoescape()
     )
     sys_template = env.get_template("sp4.md")
     usr_template = env.get_template("up3.md")
-    context = {
+    templ_context = {
         "context_flag": exam_dir or bool(context),
         "schema_flag": False,
         "schema": schema,
@@ -294,39 +351,40 @@ def main():
         "context": context,
         "program": program,
     }
-    system_prompt = sys_template.render(context)
-    system_prompt = "```markdown\n" + system_prompt + "\n```"
-    user_prompt = usr_template.render(context)
-    user_prompt = "```markdown\n" + user_prompt + "\n```"
+    system_prompt = sys_template.render(templ_context)
+    user_prompt = usr_template.render(templ_context)
 
-    # Model selection
+    # MODEL CALL
     model = input_args.model
-    if model == "gpt-4.1-mini":
-        parsed, tokens = run_openai(system_prompt, user_prompt, schema, model="gpt-4.1-mini")
-    elif model in {"llama3.2", "deepseek-r1:1.5b"}:
-        parsed = run_ollama(system_prompt, user_prompt, schema, model="llama3.2")
-    """
-    else:
-        dest_dir = "fabric"
-        parsed = run_fabric(context, schema, args_md, program)
-    """
+    provider = input_args.provider
 
-    # Combine scores
+    if provider == "openai":
+        parsed, tokens = run_openai(system_prompt, user_prompt, schema, model)
+        tokens = openai_reshape_usage(tokens)
+    elif provider:
+        parsed, tokens= run_openrouter(system_prompt, user_prompt, schema, model)
+    else:
+        parsed, tokens, provider = run_router_request(
+            system_prompt, user_prompt, schema, model,
+            input_args.prompt_price, input_args.completion_price
+        )
+
+    call_cost = compute_cost(model, tokens, pricing)
+
+    # FINAL SCORE
     combined = compute_final_score(
         metrics, parsed, tests_weights, llm_weights,
         combined_weights, quest_weights, pvcheck_csv_scores
     )
 
-    # Request cost computation
-    reshaped = reshape_usage(tokens)
-    call_cost = compute_cost(model, reshaped, pricing)
-
-    # Saving
+    # SAVE OUTPUT
     timestamp = datetime.now().strftime("%H-%M-%S")
-    exam_date = f"{input_args.exam}_" if exam_dir else ""
-    output_file_name = f"{exam_date}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
-    output_file_path = os.path.join(paths["output"], model, output_file_name)
-    os.makedirs(os.path.dirname(output_file_path), exist_ok=True)
+    exam_prefix = f"{input_args.exam}_" if exam_dir else ""
+    output_file_name = f"{exam_prefix}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
+    output_dir = os.path.join(paths["output"], make_safe_dirname(model))
+    os.makedirs(output_dir, exist_ok=True)
+    output_file_path = os.path.join(output_dir, output_file_name)
+
     with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump({
             "LLM": parsed,

@@ -51,11 +51,14 @@ For each topic:
 ## Required Output
 
 Generate an output **in JSON format** that follows the specified schema exactly.
+**Generate the output exclusively in english**.
 
 {% if schema_flag %} 
-{{ schema }}
-{% endif %}
+### JSON SCHEMA
 
+{{ schema }}
+
+{% endif %}
 ---
 
 ## Important Notes

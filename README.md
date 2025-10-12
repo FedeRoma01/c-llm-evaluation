@@ -133,36 +133,54 @@ uv run main.py <program_file.c> [options]
 ### Arguments
 
 * `program` (str): The C program file to evaluate.
+* `model` (str): LLM model to use.
 
 ### Options
 
-* `--exam, -ex`: The exam directory containing related resources (e.g., text exam, pvcheck test, input for the C program).
-* `--input, -i`: The input for the C program.
-* `--context, -cx`: The context of the C program.
-* `--config, -cf`: tag to enable pre-configured input files path.
-* `--system_prompt, -sp`: System prompt file (default: `sp5.md`).
-* `--user_prompt, -up`: User prompt file (default: `up4.md`).
-* `--schema, -s`: JSON schema file (default: `s5.json`).
-* `--model, -m`: Model to use (`gpt-4.1-mini`, `llama3.2`, or `fabric`).
+* `--exam, -ex` (str): Directory containing exam resources (e.g., exam text, pvcheck test, input for the C program).  
+* `--input, -i` (str): Input for the C program.  
+* `--context, -cx` (str): Context for the C program.  
+* `--config, -cf`: Enables pre-configured input file paths.  
+* `--system_prompt, -sp` (str): System prompt file (default: `sp5.md`).  
+* `--user_prompt, -up` (str): User prompt file (default: `up4.md`).  
+* `--schema, -s` (str): JSON schema file (default: `s5.json`).  
+* `--provider, -pr` (str): Provider to use for the specified model. 
+* `--prompt_price, -pp` (float): Maximum price per 1M tokens for the prompt (default: '0').  
+* `--completion_price, -cp` (float): Maximum price per 1M tokens for the completion (default: '0').
 
 ### Specifications
 
-For the `--exam` option the specified directory must contain the following files:
+#### option `--exam`
+When specifying the exam directory, it must contain the following files:
 
-* `pvcheck.test`: test file for the pvcheck.
-* `<my_context>.md`: context for the C program (ex: text exam).
-* `<my_input>.dat`: file containing the input for the C program, necessary for its correct execution (another specified file with *`-i`* option will be ignored).
+* `pvcheck.test` – Test file for pvcheck.  
+* `<my_context>.md` – Context for the C program (e.g., exam text).  
+* `<my_input>.dat` – Input file for the C program. If this file exists, any input passed via `--input` will be ignored.
 
-The names "my_context" and "my_input" are given as examples, while the file extensions must be `.md` and `.dat`.
-Using `--exam` option will ignore the `--input` and `--context` options beacuse it looks for them inside the specified directory.
-Its usage is recommended in the case you have a directory containing both context and input files, and the `pvcheck.test` file to perform the pvcheck test. 
+**Notes:**
+
+- The file names `my_context` and `my_input` are examples; file extensions must be `.md` and `.dat`.  
+- Using `--exam` automatically ignores `--input` and `--context` options.  
+- Recommended when the directory contains both context and input files along with `pvcheck.test` to perform the pvcheck test.
+
+#### option `--provider`
+Behavior changes depending on whether a provider is specified:
+
+* **Provider specified**:  
+  - The API call will be made **only using that provider** with its default pricing.  
+
+* **Provider not specified**:
+  - The API call will attempt multiple providers for the chosen model, starting from the **least expensive**.  
+  - Maximum prices set via `--prompt_price` and `--completion_price` will be applied.  
+
+**Note:** Price constraints are only applied when no provider is explicitly specified.
 
 ### Example
 
 #### Execution with pvcheck
 
 ```bash
-uv run main.py prova.c -cf -ex 20220728 -m gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
+uv run main.py prova.c -cf -ex 20220728 -m openai/gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
 ```
 
 This command evaluates `prova.c` against the exam resources in `20220728/` using `gpt-4.1-mini` and specified prompt/schema files. All files refer to pre-configured paths.
@@ -170,7 +188,7 @@ This command evaluates `prova.c` against the exam resources in `20220728/` using
 #### Execution without pvcheck
 
 ```bash
-uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
+uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m openai/gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
 ```
 This command evaluates `prova.c` without any context using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
 
