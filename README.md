@@ -62,7 +62,7 @@ The repository is organized as follows:
 * **Compilation Check** — evaluates compiler diagnostics, counting warnings and detecting build errors.  
 * **Automated Testing** — runs objective checks (`pvcheck`) and performance tests, generating weighted numeric scores for correctness and efficiency.  
 * **Performance Measurement** — measures execution time and contributes to the final quantitative assessment.  
-* **LLM-based Evaluation** — uses configurable large language models (e.g., OpenAI GPT, Ollama, Fabric) to perform topic-based qualitative analysis of the C program.  
+* **LLM-based Evaluation** — uses configurable large language models to perform topic-based qualitative analysis of the C program.  
   - Produces detailed evaluations per topic (`score`, `evidences`, and `criticality` for each comment).  
   - Identifies **priority issues** and provides **practical improvement tips**.  
 * **Final Scoring** — integrates quantitative test results with LLM-derived evaluations using configurable weighting rules.  
@@ -106,8 +106,7 @@ The repository is organized as follows:
 4. Install external tools required for testing:
 
    * `gcc` (for compilation)
-   * [`pvcheck`](https://github.com/claudio-unipv/pvcheck.git) (for automated exam testing) 
-   * Optional: [`fabric`](https://github.com/danielmiessler/Fabric.git) (if using the Fabric model backend)
+   * [`pvcheck`](https://github.com/claudio-unipv/pvcheck.git) (for automated exam testing)
 
 ---
 
