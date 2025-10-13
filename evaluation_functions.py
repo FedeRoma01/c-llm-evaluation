@@ -1,11 +1,10 @@
-import shutil
-import logging
-import subprocess
-import time
 import csv
 import io
-import os
+import logging
 import platform
+import shutil
+import subprocess
+import time
 from pathlib import Path
 
 
@@ -38,7 +37,6 @@ def compilation_test(file_path: str) -> int:
 
         warnings = result.stderr.count("warning:")
         score = max(0, 10 - warnings)
-        exec_name = get_exec_name()
         return score
     except subprocess.TimeoutExpired:
         logging.error("Compilation timed out")
@@ -81,7 +79,9 @@ def time_test(p_input):
     return res
 
 
-def pvcheck_test(pvcheck_weights: dict, pvcheck_csv_scores: dict, exam_dir_path: str) -> float:
+def pvcheck_test(
+    pvcheck_weights: dict, pvcheck_csv_scores: dict, exam_dir_path: str
+) -> float:
     """Run pvcheck tool and compute weighted normalized score."""
     if not shutil.which("pvcheck"):
         logging.error("pvcheck not found")
@@ -112,7 +112,7 @@ def pvcheck_test(pvcheck_weights: dict, pvcheck_csv_scores: dict, exam_dir_path:
         if not total_weights:
             return 0
         norm_weights = [w / total_weights for w in weights_list]
-        return sum(v * w for v, w in zip(norm_scores, norm_weights))
+        return sum(v * w for v, w in zip(norm_scores, norm_weights, strict=False))
     except subprocess.TimeoutExpired:
         logging.error("pvcheck execution timed out")
         return 0
@@ -125,7 +125,7 @@ def compute_final_score(
     llm_weights: dict,
     combined_weights: dict,
     quest_weights: dict,
-    pvcheck_csv_scores: dict
+    pvcheck_csv_scores: dict,
 ) -> dict:
     """Compute combined final score from objective and LLM metrics."""
     valid_tests = {t: v for t, v in objective_metrics.items() if v != -1}
@@ -134,7 +134,7 @@ def compute_final_score(
         total_weight = sum(tests_weights[t] for t in valid_tests)
         tests_score = weighted_sum / total_weight
     else:
-        tests_score = 0     # no tests executed
+        tests_score = 0  # no tests executed
 
     for t, v in objective_metrics.items():
         if v == -1:
@@ -143,15 +143,16 @@ def compute_final_score(
 
     # LLM score
     llm_metrics_spec = {arg["name"]: arg["score"] for arg in llm_metrics["evaluations"]}
-    llm_sum = sum(arg["score"] * llm_weights[arg["name"]] for arg in llm_metrics["evaluations"])
+    llm_sum = sum(
+        arg["score"] * llm_weights[arg["name"]] for arg in llm_metrics["evaluations"]
+    )
     llm_score = llm_sum / sum(llm_weights.values())
 
     # Final score
     total_combined_weights = sum(combined_weights.values())
     final_score = (
-            (combined_weights["tests"] * tests_score + combined_weights["llm"] * llm_score)
-            / total_combined_weights
-    )
+        combined_weights["tests"] * tests_score + combined_weights["llm"] * llm_score
+    ) / total_combined_weights
 
     pv_data = {
         k: [(float(x) if x != "MISS" else 0) for x in v]
@@ -167,6 +168,6 @@ def compute_final_score(
             "pvcheck_questions": quest_weights,
             "tests": tests_weights,
             "llm": llm_weights,
-            "final": combined_weights
-        }
+            "final": combined_weights,
+        },
     }

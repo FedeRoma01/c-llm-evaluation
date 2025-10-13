@@ -1,7 +1,7 @@
 [project]
 name = "pythonproject3"
 version = "0.1.0"
-description = "Add your description here"
+description = "checkMyC"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -9,3 +9,52 @@ dependencies = [
     "jinja2",
     "requests",
 ]
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+skip-string-normalization = false
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+fix = true
+unsafe-fixes = false
+lint.select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "I",   # import order (isort)
+  "B",   # bugbear
+  "C4",  # comprehensions
+  "SIM", # simplify
+  "UP",  # pyupgrade
+]
+lint.ignore = [
+    "E501",  # line too long (Black handles it)
+]
+exclude = [
+  ".git",
+  "__pycache__",
+  "build",
+  "dist",
+  "venv",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.ruff.lint.isort]
+known-first-party = ["pythonProject3"]
+combine-as-imports = true
+
+[dependency-groups]
+dev = [
+    "black>=25.9.0",
+    "pre-commit>=4.3.0",
+    "ruff>=0.14.0",
+]
+
