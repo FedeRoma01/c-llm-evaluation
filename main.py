@@ -22,9 +22,9 @@ from evaluation_functions import (
 
 def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
     """Execute an API call using OpenRouter with structured JSON output"""
-    client = OpenAI(
-        base_url="https://openrouter.ai/api/v1", api_key=os.getenv("OPENROUTER_API_KEY")
-    )
+    key = check_api_key("OPENROUTER_API_KEY")
+
+    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
 
     try:
         response = client.chat.completions.create(
@@ -50,7 +50,16 @@ def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
         print(response)
 
     # Robust extraction
-    content = getattr(response.choices[0].message, "content", None)
+    message = getattr(response.choices[0], "message", {})
+    content = getattr(message, "content", "").strip()
+
+    # Fallback: try reasoning field if content empty
+    if not content:
+        reasoning = getattr(message, "reasoning", "")
+        if reasoning:
+            match = re.search(r"```json\s*(\{.*\})\s*```", reasoning, re.DOTALL)
+            content = match.group(1).strip() if match else reasoning.strip()
+
     if not content:
         raise RuntimeError(f"Empty or malformed response: {response}")
 
@@ -72,9 +81,7 @@ def run_router_request(
     debug=False,
 ):
     """Execute direct OpenRouter API call with explicit provider control and price constraints."""
-    key = os.getenv("OPENROUTER_API_KEY")
-    if not key:
-        raise OSError("Missing OPENROUTER_API_KEY")
+    key = check_api_key("OPENROUTER_API_KEY")
 
     headers = {
         "Authorization": f"Bearer {key}",
@@ -143,7 +150,8 @@ def run_router_request(
 
 def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
     """Execute an OpenAI API call with structured JSON output"""
-    client = OpenAI()
+    key = check_api_key("OPENAI_API_KEY")
+    client = OpenAI(api_key=key)
     try:
         response = client.responses.create(
             model=model,
@@ -176,6 +184,13 @@ def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
         ) from e
 
     return parsed, response.usage.model_dump()
+
+
+def check_api_key(env_var) -> str:
+    key = os.getenv(env_var)
+    if not key:
+        raise OSError(f"Missing {env_var}")
+    return key
 
 
 def get_paths(config: dict, config_flag: bool) -> dict:
