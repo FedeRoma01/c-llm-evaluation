@@ -20,6 +20,14 @@ from evaluation_functions import (
 )
 
 
+class APIError(Exception):
+    pass
+
+
+class InvalidResponseError(APIError):
+    pass
+
+
 def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
     """Execute an API call using OpenRouter with structured JSON output"""
     key = check_api_key("OPENROUTER_API_KEY")
@@ -44,7 +52,7 @@ def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
             temperature=0,
         )
     except Exception as e:
-        raise RuntimeError(f"OpenRouter API call failed: {e}") from e
+        raise APIError(f"OpenRouter API call failed: {e}") from e
 
     if debug:
         print(response)
@@ -61,12 +69,12 @@ def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
             content = match.group(1).strip() if match else reasoning.strip()
 
     if not content:
-        raise RuntimeError(f"Empty or malformed response: {response}")
+        raise InvalidResponseError(f"Empty or malformed response: {response}")
 
     try:
         parsed = json.loads(content.strip())
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in response: {content}") from e
+        raise InvalidResponseError(f"Invalid JSON in response: {content}") from e
 
     return parsed, response.usage.model_dump()
 
@@ -122,9 +130,11 @@ def run_router_request(
         response.raise_for_status()
         data = response.json()
     except requests.RequestException as e:
-        raise RuntimeError(f"OpenRouter HTTP error: {e}") from e
+        raise APIError(f"OpenRouter HTTP error: {e}") from e
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Invalid JSON from OpenRouter: {response.text}") from e
+        raise InvalidResponseError(
+            f"Invalid JSON from OpenRouter: {response.text}"
+        ) from e
 
     if debug:
         print(data)
@@ -143,7 +153,7 @@ def run_router_request(
 
         parsed = json.loads(content)
     except (KeyError, json.JSONDecodeError) as e:
-        raise ValueError(f"Malformed OpenRouter response: {data}") from e
+        raise InvalidResponseError(f"Malformed OpenRouter response: {data}") from e
 
     return parsed, data.get("usage", {}), data.get("provider")
 
@@ -170,7 +180,7 @@ def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
             temperature=0,
         )
     except Exception as e:
-        raise RuntimeError(f"OpenAI API call failed: {e}") from e
+        raise APIError(f"OpenAI API call failed: {e}") from e
 
     if debug:
         print(response)
@@ -179,7 +189,7 @@ def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
         text = response.output[0].content[0].text
         parsed = json.loads(text)
     except (AttributeError, IndexError, json.JSONDecodeError) as e:
-        raise ValueError(
+        raise InvalidResponseError(
             f"Malformed or invalid JSON in OpenAI response: {response}"
         ) from e
 
@@ -384,7 +394,7 @@ def main():
     context = "```markdown\n" + context + "\n```"
 
     # OBJECTIVE TESTS
-    metrics = dict.fromkeys(tests, -1)
+    metrics = dict.fromkeys(tests, -1.0)
     metrics[tests[0]] = compilation_test(program_path)
     metrics[tests[1]] = time_test(program_input)
     pvcheck_csv_scores = defaultdict(list)
@@ -430,20 +440,33 @@ def main():
     model = input_args.model
     provider = input_args.provider
 
-    if provider == "openai":
-        parsed, tokens = run_openai(system_prompt, user_prompt, schema, model)
-        tokens = openai_reshape_usage(tokens)
-    elif provider:
-        parsed, tokens = run_openrouter(system_prompt, user_prompt, schema, model)
-    else:
-        parsed, tokens, provider = run_router_request(
-            system_prompt,
-            user_prompt,
-            schema,
-            model,
-            input_args.prompt_price,
-            input_args.completion_price,
-        )
+    try:
+        if provider == "openai":
+            parsed, tokens = run_openai(system_prompt, user_prompt, schema, model)
+            tokens = openai_reshape_usage(tokens)
+        elif provider:
+            parsed, tokens = run_openrouter(system_prompt, user_prompt, schema, model)
+        else:
+            parsed, tokens, provider = run_router_request(
+                system_prompt,
+                user_prompt,
+                schema,
+                model,
+                input_args.prompt_price,
+                input_args.completion_price,
+            )
+    except InvalidResponseError as e:
+        print(e)
+        sys.exit(1)
+    except APIError as e:
+        print(e)
+        sys.exit(1)
+    except OSError as e:
+        print(e)
+        sys.exit(1)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
 
     call_cost = compute_cost(model, tokens, pricing)
 

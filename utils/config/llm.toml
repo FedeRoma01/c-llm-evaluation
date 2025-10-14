@@ -2,16 +2,16 @@
 
 # USD / 1M tokens
 [models."gpt-4.1-mini"]
-#input_tokens = 0.80
+input_tokens = 0.80    # OPENAI
 cached_tokens = 0.20
-#output_tokens = 3.20
+output_tokens = 3.20   # OPENAI
 prompt_tokens = 0.80
 completion_tokens = 3.20
 
 [models."gpt-4.1-nano"]
-#input_tokens = 0.20
+input_tokens = 0.20    # OPENAI
 cached_tokens = 0.05
-#output_tokens = 0.80
+output_tokens = 0.80   # OPENAI
 prompt_tokens = 0.20
 completion_tokens = 0.80
 

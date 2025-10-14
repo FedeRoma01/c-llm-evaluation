@@ -7,6 +7,8 @@ import subprocess
 import time
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+
 
 def add_line_numbers(code: str) -> str:
     """Add line numbers for relative comments in the output."""
@@ -22,7 +24,7 @@ def get_exec_name() -> str:
     return "a.exe" if platform.system() == "Windows" else "a.out"
 
 
-def compilation_test(file_path: str) -> int:
+def compilation_test(file_path: str) -> float:
     """Compile C code with GCC and compute a warning-based score."""
     if not shutil.which("gcc"):
         logging.error("gcc not found")
@@ -43,7 +45,7 @@ def compilation_test(file_path: str) -> int:
         return 0
 
 
-def time_test(p_input):
+def time_test(p_input) -> float:
     """Run compiled program and assign a score based on runtime."""
     exec_name = get_exec_name()
     exec_path = Path(exec_name)
@@ -128,7 +130,7 @@ def compute_final_score(
     pvcheck_csv_scores: dict,
 ) -> dict:
     """Compute combined final score from objective and LLM metrics."""
-    valid_tests = {t: v for t, v in objective_metrics.items() if v != -1}
+    valid_tests = {t: v for t, v in objective_metrics.items() if v != -1.0}
     if valid_tests:
         weighted_sum = sum(tests_weights[t] * v for t, v in valid_tests.items())
         total_weight = sum(tests_weights[t] for t in valid_tests)
