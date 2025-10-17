@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Evaluation Result</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: sans-serif;
+            margin: 2rem 4rem;
+        }
+        h1, h2, h3 { color: #fff; }
+        pre {
+            background: #f4f4f4;
+            padding: 1rem;
+            border-radius: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+        }
+        .outer-table {
+            width: auto;
+            margin-bottom: 2rem;
+            border: 1px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        .inner * { border: none; }
+        th {
+            background-color: #2b2b2b;
+            color: #ffffff;
+        }
+        li { margin-bottom: 0.5rem; }
+        pre, code {
+            border: 1px solid #ccc;
+            background-color: #1a1a1a;
+            color: #fff;
+            border-radius: 5px;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>LLM Evaluation</h1>
+    <p><strong>Model:</strong> {{ data.model.name }}</p>
+    <p><strong>Provider:</strong> {{ data.model.provider }}</p>
+    <p><strong>Final Score:</strong> {{ data.final_score }}</p>
+    <p><strong>Call cost:</strong> ${{ data.call_cost }}</p>
+
+    <h2>LLM Results</h2>
+    <table class="outer-table">
+        <tr><th>Name</th><th>Score</th><th>Comments</th><th>Lines</th></tr>
+        {% for ev in data.LLM.evaluations %}
+        <tr>
+            <td>{{ ev.name }}</td>
+            <td>{{ ev.score }}</td>
+            <td class="inner">
+                <table border="1">
+                {% for comm in ev.evidences %}
+                <tr class="inner"><td>{{ comm.comment }}</td></tr>
+                {% endfor %}
+                </table>
+            </td>
+            <td class="inner">
+               <table border="1">
+                {% for l in ev.evidences %}
+                <tr><td>{{ l.lines }}</td></tr>
+                {% endfor %}
+                </table>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <h2>Priority Issues</h2>
+    <ul>
+        {% for issue in data.LLM["priority issues"] %}
+        <li>{{ issue }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Practical Tips</h2>
+    <ul>
+        {% for tip in data.LLM.practical_tips %}
+        <li>{{ tip }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Tests Results</h2>
+    <table class="outer-table">
+        <tr><th>Test</th><th>Score</th></tr>
+        {% for k, v in data.tests_scores.items() %}
+        <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+        {% endfor %}
+    </table>
+
+    <h2>Weights</h2>
+    <pre>{{ data.weights | tojson(indent=2) }}</pre>
+
+</body>
+</html>

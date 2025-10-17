@@ -266,14 +266,14 @@ def init_argparser() -> argparse.ArgumentParser:
         "--system_prompt",
         "-sp",
         type=str,
-        default="sp5.md",
+        default="sp6.md",
         help="System prompt file for the model",
     )
     parser.add_argument(
         "--schema",
         "-s",
         type=str,
-        default="s5.json",
+        default="s6.json",
         help="JSON output schema for the model",
     )
     parser.add_argument(
@@ -491,13 +491,28 @@ def main():
 
     with open(output_file_path, "w", encoding="utf-8") as f:
         json.dump(
-            {"LLM": parsed, "usage": tokens, "call_cost": call_cost, **combined},
+            {
+                "LLM": parsed,
+                "model": {"name": model, "provider": provider},
+                "usage": tokens,
+                "call_cost": call_cost,
+                **combined,
+            },
             f,
             indent=2,
             ensure_ascii=False,
         )
 
     print(f"Output saved in {output_file_path}")
+
+    with open(output_file_path, encoding="utf-8") as f:
+        data = json.load(f)
+    env = Environment(loader=FileSystemLoader("."))
+    template = env.get_template("report_template.html")
+    html_output = template.render(data=data)
+
+    with open("report_output.html", "w", encoding="utf-8") as f:
+        f.write(html_output)
 
 
 if __name__ == "__main__":
