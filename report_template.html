@@ -55,20 +55,27 @@
 
     <h2>LLM Results</h2>
     <table class="outer-table">
-        <tr><th>Name</th><th>Score</th><th>Comments</th><th>Lines</th></tr>
+        <tr><th>Name</th><th>Score</th><th>Comments</th><th>Criticality</th><th>Lines</th></tr>
         {% for ev in data.LLM.evaluations %}
         <tr>
             <td>{{ ev.name }}</td>
             <td>{{ ev.score }}</td>
             <td class="inner">
-                <table border="1">
+                <table>
                 {% for comm in ev.evidences %}
                 <tr class="inner"><td>{{ comm.comment }}</td></tr>
                 {% endfor %}
                 </table>
             </td>
             <td class="inner">
-               <table border="1">
+                <table>
+                {% for crit in ev.evidences %}
+                <tr class="inner"><td>{{ crit.criticality }}</td></tr>
+                {% endfor %}
+                </table>
+            </td>
+            <td class="inner">
+               <table>
                 {% for l in ev.evidences %}
                 <tr><td>{{ l.lines }}</td></tr>
                 {% endfor %}
