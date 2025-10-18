@@ -273,7 +273,7 @@ def init_argparser() -> argparse.ArgumentParser:
         "--schema",
         "-s",
         type=str,
-        default="s6.json",
+        default="s5.json",
         help="JSON output schema for the model",
     )
     parser.add_argument(
@@ -511,7 +511,9 @@ def main():
     template = env.get_template("report_template.html")
     html_output = template.render(data=data)
 
-    with open("report_output.html", "w", encoding="utf-8") as f:
+    output_html_name = os.path.splitext(output_file_name)[0]
+    output_html_path = os.path.join(output_dir, f"{output_html_name}.html")
+    with open(output_html_path, "w", encoding="utf-8") as f:
         f.write(html_output)
 
 

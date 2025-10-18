@@ -38,8 +38,8 @@ def compilation_test(file_path: str) -> float:
             return 0
 
         warnings = result.stderr.count("warning:")
-        score = max(0, 10 - warnings)
-        return score
+        score = float(max(0, 10 - warnings))
+        return float(score)
     except subprocess.TimeoutExpired:
         logging.error("Compilation timed out")
         return 0
@@ -78,7 +78,7 @@ def time_test(p_input) -> float:
     except subprocess.TimeoutExpired:
         logging.error("Execution timed out")
 
-    return res
+    return float(res)
 
 
 def pvcheck_test(

@@ -67,10 +67,12 @@ The repository is organized as follows:
   - Identifies **priority issues** and provides **practical improvement tips**.  
 * **Final Scoring** — integrates quantitative test results with LLM-derived evaluations using configurable weighting rules.  
 * **Structured Output** — stores all results in a hierarchical JSON structure including:
+  - Used model and relative provider.
   - LLM evaluations with per-topic scores, evidences, and criticality levels.  
   - Token usage and cost statistics.  
   - Objective test scores (warnings, performance, pvcheck).  
   - Aggregated scores and weighting parameters used for final computation.
+* **HTML file** - visualizes the output in a web page.
 
 
 ---
@@ -209,8 +211,12 @@ This command evaluates `prova.c` without any context using GPT-4.1-mini, `Esempi
 
 ## Output
 
-Results are saved in the `output_path` specified in `config.toml`, organized by model type (`<model>/`).  
-Each output JSON file includes the following sections:
+Results are saved in the `output_path` specified in `config.toml`, organized by model type (`<model>/`).
+Each evaluation produces two output files with identical base names but different extensions:
+* `<timestamp>_<program>_<systemPrompt>_<userPrompt>_<schema>.json`
+* `<timestamp>_<program>_<systemPrompt>_<userPrompt>_<schema>.html`
+
+Each output JSON file includes the following sections, while the corresponding HTML file renders the results in a human-readable format using a predefined Jinja2 template (`report_template.html`), allowing quick visualization of the evaluation outcome:
 
 ### **LLM**
 Contains the model’s qualitative evaluation of the C program:

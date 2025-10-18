@@ -17,54 +17,24 @@ completion_tokens = 0.80
 
 # EVALUATED TOPICS
 [[topics]]
-name = "Control structures"
+name = "Modularity"
 weight = 1.0
-description = "Evaluate correctness and appropriateness in the use of if/else, switch/case, for/while/do...while loops, handling of break/continue/return, and clarity of control flow."
+description = "Evaluate whether the program is organized into multiple, self-contained functions, each performing one specific and clearly defined operation. Check that functions interact through parameters and return values instead of shared global data. Each function should encapsulate a complete logical task, such as input handling, computation, or output formatting. If every function maintains this clarity of purpose, has a proper interface, and avoids redundant dependencies, the topic is fully satisfied and must receive the maximum score."
 
 [[topics]]
-name = "Data types"
+name = "Correct use of dynamic memory"
 weight = 1.0
-description = "Evaluate the choice and use of primitive types (int, float, double, char, bool), type consistency, correctness of casts, management of constants, and numerical precision."
+description = "Assess the correctness and safety of memory allocation and management. Verify that memory is allocated using malloc, calloc, or realloc with accurate size calculations and that realloc is used safely without losing pointers. Check for proper handling of allocation failures and that all allocated memory is released when no longer needed. If the program demonstrates safe allocation, resizing, and cleanup without leaks or invalid access, the topic is fully satisfied and must receive the maximum score."
 
 [[topics]]
-name = "Functions"
-weight = 1.3
-description = "Evaluate code modularity, clarity of parameters, reusability, correct use of return values, and management of variable scope. For each function, assess whether it correctly performs its intended task."
-
-[[topics]]
-name = "Derived data types"
+name = "Appropriate data structures"
 weight = 1.0
-description = "Evaluate the use of arrays, strings, and structs, correctness of indexing, initialization, data access, and safe string manipulation."
+description = "Determine whether the data structures chosen are well-suited to represent the problem domain and ensure logical grouping of related information. Structs should group related fields meaningfully, arrays should be used for collections of homogeneous data, and pointers should be applied only when necessary for flexibility or efficiency. If data organization is coherent, consistent, and supports clear operations on the dataset, the topic is fully satisfied and must receive the maximum score."
 
 [[topics]]
-name = "File handling"
-weight = 1.2
-description = "Evaluate the use of fopen, fclose, fread, fwrite, fprintf, fscanf, correct management of file pointers, error checking, and proper file closure."
-
-[[topics]]
-name = "Pointers"
-weight = 1.3
-description = "Evaluate understanding of addresses and dereferencing, use for parameter passing, dynamic memory management (malloc, calloc, free), and prevention of memory leaks and dangling pointers."
-
-[[topics]]
-name = "Storage classes"
-weight = 0.3
-description = "Evaluate knowledge and use of auto, static, extern, register; understanding of variable scope and lifetime, and impact on performance."
-
-[[topics]]
-name = "Operators"
-weight = 0.7
-description = "Evaluate correct use of arithmetic, logical, relational, and bitwise operators, understanding of precedence and associativity, appropriate use of increment/decrement, compound assignments, and the ternary operator."
-
-[[topics]]
-name = "Sorting"
-weight = 1.2
-description = "Evaluate implementation of sorting algorithms such as qsort or correct usage thereof when applied. Consider aspects such as correctness, efficiency, and handling of edge cases."
-
-[[topics]]
-name = "Programming style"
-weight = 0.8
-description = "Evaluate overall readability: indentation, consistent naming, comments, file organization, and adherence to a clear and uniform coding style."
+name = "Error handling"
+weight = 1.0
+description = "Check that the program systematically validates critical runtime operations, such as command-line argument count, file opening, and memory allocation. Functions should detect and respond to errors promptly using return values or informative messages, ensuring the program remains stable. If all potential error sources are verified and handled gracefully, maintaining robustness and preventing undefined behavior, the topic is fully satisfied and must receive the maximum score."
 
 # SUMMARY ANALYSIS
 [[analysis]]
