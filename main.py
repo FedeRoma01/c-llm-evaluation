@@ -30,7 +30,7 @@ class InvalidResponseError(APIError):
 
 def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
     """Execute an API call using OpenRouter with structured JSON output"""
-    key = check_api_key("OPENROUTER_API_KEY")
+    key = check_api_key("OPENROUTER_API_KEY1")
 
     client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key)
 
@@ -89,7 +89,7 @@ def run_router_request(
     debug=False,
 ):
     """Execute direct OpenRouter API call with explicit provider control and price constraints."""
-    key = check_api_key("OPENROUTER_API_KEY")
+    key = check_api_key("OPENROUTER_API_KEY1")
 
     headers = {
         "Authorization": f"Bearer {key}",
@@ -333,6 +333,101 @@ def make_safe_dirname(s: str) -> str:
     return safe_name
 
 
+def generate_schema_from_toml(topics, analysis):
+    """Create JSON schema for the LLM output"""
+
+    # Template for evidence object
+    evidence_schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "comment": {
+                "type": "string",
+                "description": "It is an observation done on the user's program that must enlight a correct aspect or "
+                "a problem in it. The observations must refer to impactful problems related to user "
+                "specifications. It must be useful for providing a summary of the goodness of the code.",
+            },
+            "lines": {
+                "type": "array",
+                "items": {"type": "string", "pattern": "^\\d+(-\\d+)?$"},
+                "default": [],
+                "description": "It contains comment's relative code lines numbers (e.g., '42' or '10-15'). "
+                "Consecutive line numbers must not be in different array elements.",
+            },
+            "criticality": {
+                "type": "string",
+                "enum": ["high", "medium", "low"],
+                "description": "It enlight the relative comment criticality level. 'low' confirms correct or "
+                "acceptable code, 'medium' is for already functional parts that could improved, "
+                "'high' identifies an actual problem, error, or violation of the topic’s evaluation "
+                "rules that must be corrected.",
+            },
+        },
+        "required": ["comment", "lines", "criticality"],
+        "description": "Evidence entry providing justification for a topic's score. Each score below 10 must "
+        "correspond to at least one comment describing a necessary correction or improvement ('medium' "
+        "or 'high' criticality).",
+    }
+
+    # Build prefixItems list — one entry per topic
+    prefix_items = []
+    for topic in topics:
+        prefix_items.append(
+            {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "const": topic["name"],
+                    },
+                    "score": {
+                        "type": "integer",
+                        "description": "It must be a number between 0 and 10. It evaluates the topic satisfaction basing "
+                        "exclusively on the specifications provided by the user. Score must be 10 when all "
+                        "topic related comments have 'low' criticality.",
+                    },
+                    "evidences": {
+                        "type": "array",
+                        "items": evidence_schema,
+                        "description": f"List of evidences supporting the evaluation for '{topic['name']}'.",
+                    },
+                },
+                "required": ["name", "score", "evidences"],
+                "description": topic["description"],
+            }
+        )
+
+    # Add analysis sections dynamically
+    analysis_props = {}
+    for a in analysis:
+        analysis_props[a["name"]] = {
+            "type": "array",
+            "description": a["description"],
+            "items": {"type": "string", "description": f"Entry for '{a['name']}'."},
+        }
+
+    # Combine into one schema
+    schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "evaluations": {
+                "type": "array",
+                "prefixItems": prefix_items,
+                "items": {"type": "object", "additionalProperties": False},
+                "minItems": len(prefix_items),
+                "maxItems": len(prefix_items),
+            },
+            **analysis_props,
+        },
+        "required": ["evaluations", *list(analysis_props.keys())],
+        "description": "Output json schema to be respected",
+    }
+
+    return schema
+
+
 def main():
     parser = init_argparser()
     input_args = parser.parse_args()
@@ -407,6 +502,9 @@ def main():
     schema_path = os.path.join(paths["schema"], input_args.schema)
     schema = load_file(schema_path)
     json_name = os.path.splitext(os.path.basename(schema_path))[0]
+
+    # json_name = "scustom"
+    # schema = generate_schema_from_toml(topics, analysis)
 
     # PROMPTS CONSTRUCTION
     args_md = "\n".join(

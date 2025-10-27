@@ -15,26 +15,34 @@ output_tokens = 0.80   # OPENAI
 prompt_tokens = 0.20
 completion_tokens = 0.80
 
+[models."deepseek/deepseek-chat-v3-0324"]
+prompt_tokens = 0.25
+completion_tokens = 0.88
+
+[models."qwen/qwen3-coder"]
+prompt_tokens = 0.25
+completion_tokens = 1
+
 # EVALUATED TOPICS
 [[topics]]
 name = "Modularity"
 weight = 1.0
-description = "Evaluate whether the program is organized into multiple, self-contained functions, each performing one specific and clearly defined operation. Check that functions interact through parameters and return values instead of shared global data. Each function should encapsulate a complete logical task, such as input handling, computation, or output formatting. If every function maintains this clarity of purpose, has a proper interface, and avoids redundant dependencies, the topic is fully satisfied and must receive the maximum score."
+description = "The program must be organized into multiple, self-contained functions, each performing one specific and clearly defined operation. The violation of this important rule must correspond into the minimum score assignement. Functions must handle processes and computing (also printing is allowed). The 'main' function should contain printings, variable initializations and only few error checks (argc and fopen). Each violation of these rules is an error and must correspond to a score penalization. Check that functions interact through parameters and separate logical tasks and that are called from the main. Each function must encapsulate a complete logical task, such as computation. If every function respects the previous rules, maintains this clarity of purpose, has a proper interface, and avoids redundant dependencies, the topic is fully satisfied and must receive the maximum score. If provided in the input consider the reference program as the perfect reference for modularity."
 
 [[topics]]
 name = "Correct use of dynamic memory"
 weight = 1.0
-description = "Assess the correctness and safety of memory allocation and management. Verify that memory is allocated using malloc, calloc, or realloc with accurate size calculations and that realloc is used safely without losing pointers. Check for proper handling of allocation failures and that all allocated memory is released when no longer needed. If the program demonstrates safe allocation, resizing, and cleanup without leaks or invalid access, the topic is fully satisfied and must receive the maximum score."
+description = "Assess the correctness and safety of memory allocation and management. Verify that memory is allocated using malloc, calloc, or realloc with accurate size calculations and that realloc is used safely without losing pointers. Check for proper handling of allocation failures and that all allocated memory is released when no longer needed. If the program demonstrates safe allocation, resizing, and cleanup without leaks or invalid access, the topic is fully satisfied and must receive the maximum score. Malloc and realloc error handling that is just a return does not penalize the topic score and is sufficient for the maximum score if all other requirements are satisfied. If provided, consider the reference program as perfect reference for correct use of dynamic memory."
 
 [[topics]]
 name = "Appropriate data structures"
 weight = 1.0
-description = "Determine whether the data structures chosen are well-suited to represent the problem domain and ensure logical grouping of related information. Structs should group related fields meaningfully, arrays should be used for collections of homogeneous data, and pointers should be applied only when necessary for flexibility or efficiency. If data organization is coherent, consistent, and supports clear operations on the dataset, the topic is fully satisfied and must receive the maximum score."
+description = "Data structures chosen must be well-suited to represent the problem domain and ensure logical grouping of related information. Structs must group related fields meaningfully, arrays must be used for collections of homogeneous data, and pointers must be applied only when necessary for flexibility or efficiency. If data organization is coherent, consistent, and supports clear operations on the dataset, the topic is fully satisfied and must receive the maximum score. Consider the effectiveness of the data structures used as main point to assign the score. If provided, consider the reference program as perfect reference for correct use of appropriate data structures."
 
 [[topics]]
 name = "Error handling"
 weight = 1.0
-description = "Check that the program systematically validates critical runtime operations, such as command-line argument count, file opening, and memory allocation. Functions should detect and respond to errors promptly using return values or informative messages, ensuring the program remains stable. If all potential error sources are verified and handled gracefully, maintaining robustness and preventing undefined behavior, the topic is fully satisfied and must receive the maximum score."
+description = "The program must systematically check the following values to detect errors: command-line argument count (argc), file opening (return value of fopen), memory allocation (return value of malloc and realloc) and input-reading (return value of sscanf). Functions must detect and respond to errors promptly using return values or informative messages. If main potential error sources are verified and handled as mentioned, the topic is fully satisfied and must receive the maximum score. No explicit error detection and handling is needed for invalid input values beyond sscanf return value; others errors must not be considered for the scoring evaluation. Memory allocation failures must be detected and handled but an handling that uses 'return' to leave the function must be considered enough to not penalize the score assignement. For this reason the program can continue execution even if memory allocation would fail during reading without penalizing the score assignement. No verification after read file function, to confirm data was successfully read before proceeding with printing and processing, is needed to obtain the maximum score assignment. If provided in the input, consider the reference program as the perfect reference for error handling."
 
 # SUMMARY ANALYSIS
 [[analysis]]

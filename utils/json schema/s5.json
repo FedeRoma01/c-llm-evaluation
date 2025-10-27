@@ -9,29 +9,41 @@
         "additionalProperties": false,
         "properties": {
           "name": { "type": "string" },
-          "score": { "type": "integer" },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 10,
+            "description": "It must be a number between 0 and 10. It evaluates the topic satisfaction basing exclusively on the specifications provided by the user. Score must be 10 when all topic related comments have 'low' criticality."
+          },
           "evidences": {
             "type": "array",
             "items": {
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "comment": { "type": "string" },
+                "comment": {
+                  "type": "string",
+                  "description": "It is an observation done on the user's program that must enlight a correct aspect or a problem in it. The observations must refer to impactful problems related to user specifications. It must be useful for providing a summary of the goodness of the code."
+                },
                 "lines": {
                   "type": "array",
                   "items": { "type": "string", "pattern": "^\\d+(-\\d+)?$" },
-                  "default": []
+                  "default": [],
+                  "description": "It contains comment's relative code lines numbers (e.g., '42' or '10-15'). Consecutive line numbers must not be in different array elements."
                 },
                 "criticality": {
                   "type": "string",
-                  "enum": ["high", "medium", "low"]
+                  "enum": ["high", "medium", "low"],
+                  "description": "It enlight the relative comment criticality level. 'low' confirms correct or acceptable code, 'medium' is for already functional parts that could improved, 'high' identifies an actual problem, error, or violation of the topic’s evaluation rules that must be corrected."
                 }
               },
-              "required": ["comment", "lines", "criticality"]
+              "required": ["comment", "lines", "criticality"],
+              "description": "Each score below 10 must correspond to at least one comment describing a necessary correction or improvement."
             }
           }
         },
-        "required": ["name", "score", "evidences"]
+        "required": ["name", "score", "evidences"],
+        "description": "Evidence entry providing justification for a topic's score. Each score below 10 must correspond to at least one comment describing a necessary correction or improvement ('medium' or 'high' criticality)."
       }
     },
     "priority issues": {
