@@ -156,7 +156,7 @@ uv run main.py <program_file.c> [options]
 * `--input, -i` (str): Input for the C program.  
 * `--context, -cx` (str): Context for the C program.  
 * `--config, -cf`: Enables pre-configured input file paths.  
-* `--system_prompt, -sp` (str): System prompt file (default: `sp5.md`).  
+* `--system_prompt, -sp` (str): System prompt file (default: `sp6.md`).  
 * `--user_prompt, -up` (str): User prompt file (default: `up4.md`).  
 * `--schema, -s` (str): JSON schema file (default: `s5.json`).  
 * `--provider, -pr` (str): Provider to use for the specified model. 
@@ -195,7 +195,7 @@ Behavior changes depending on whether a provider is specified:
 #### Execution with pvcheck
 
 ```bash
-uv run main.py prova.c -cf -ex 20220728 -m openai/gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
+uv run main.py prova.c -cf -ex 20220728 -m openai/gpt-4.1-mini -up up4.md -sp sp6.md -s s5.json
 ```
 
 This command evaluates `prova.c` against the exam resources in `20220728/` using `gpt-4.1-mini` and specified prompt/schema files. All files refer to pre-configured paths.
@@ -203,7 +203,7 @@ This command evaluates `prova.c` against the exam resources in `20220728/` using
 #### Execution without pvcheck
 
 ```bash
-uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m openai/gpt-4.1-mini -up up4.md -sp sp5.md -s s5.json
+uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m openai/gpt-4.1-mini -up up4.md -sp sp6.md -s s5.json
 ```
 This command evaluates `prova.c` without any context using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
 

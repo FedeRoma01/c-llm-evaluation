@@ -1,0 +1,11 @@
+### Appropriate data structures
+A program reaches the highest score in **appropriate data structures** when its representations directly reflect the problem domain and support efficient access and manipulation.  
+In the reference program:
+
+- The structure `struct linea` encapsulates the ten integers of a line along with their sum, creating a clear, self-contained data unit.
+- The structure `struct file` organizes the total number of lines and their dynamic array, providing a complete in-memory representation of the file.
+- Using an array of structures (`struct linea *linee`) enables direct sorting with `qsort` and efficient sequential access.
+- The histogram in `max_distribuzione` is implemented as a static array of 201 integers, an optimal solution for the range [-100, 100].
+
+**To achieve 10/10:**  
+Data structures must be designed to match the semantics of the problem, minimizing redundancy and maximizing clarity. They should simplify each required operation, not complicate it. Structures should be logically cohesive, efficient, and directly aligned with the intended processing tasks.

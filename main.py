@@ -507,9 +507,13 @@ def main():
     # schema = generate_schema_from_toml(topics, analysis)
 
     # PROMPTS CONSTRUCTION
-    args_md = "\n".join(
-        f"- **{a['name']}**: {a['description']}" for a in topics + analysis
+    args_md_parts = []
+    args_md_parts.extend(
+        load_file(os.path.join("utils", topic["description"])) for topic in topics
     )
+    args_md_parts.extend(f"## {a['name']}\n{a['description']}" for a in analysis)
+    args_md = "\n".join(args_md_parts)
+
     sys_prompt_path = os.path.join(paths["sys_prompt"], input_args.system_prompt)
     usr_prompt_path = os.path.join(paths["usr_prompt"], input_args.user_prompt)
     system_prompt_name = os.path.splitext(os.path.basename(sys_prompt_path))[0]
