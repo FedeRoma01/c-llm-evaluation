@@ -1,5 +1,5 @@
 ### Error handling
-The highest score in **error handling** is assigned when the program prevents crashes, gracefully handles invalid input, and communicates errors clearly to the user.  
+The highest score in **error handling** is assigned when the program prevents crashes, gracefully handles invalid input, and communicates errors clearly to the user.
 In the reference program:
 
 - Command-line arguments are validated (`if (argc != 2)`).
@@ -17,7 +17,7 @@ The following aspects must be considered correct:
 - The `leggi_file` function frees memory on realloc failure and returns error code.
 - The final realloc failure in `leggi_file` is only warned about but not treated as an error.
 
-**To achieve 10/10:**  
+**To achieve 10/10:**
 The program must handle all foreseeable error cases — invalid parameters, missing files, allocation failures, malformed input — without abnormal termination. Every error must produce a clear, informative message, while preserving internal data consistency and ensuring controlled program exit.
 
 

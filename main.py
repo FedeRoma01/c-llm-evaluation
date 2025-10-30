@@ -511,7 +511,7 @@ def main():
     args_md_parts.extend(
         load_file(os.path.join("utils", topic["description"])) for topic in topics
     )
-    args_md_parts.extend(f"## {a['name']}\n{a['description']}" for a in analysis)
+    args_md_parts.extend(f"### {a['name']}\n{a['description']}" for a in analysis)
     args_md = "\n".join(args_md_parts)
 
     sys_prompt_path = os.path.join(paths["sys_prompt"], input_args.system_prompt)
