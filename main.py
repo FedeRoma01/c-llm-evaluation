@@ -247,6 +247,9 @@ def init_argparser() -> argparse.ArgumentParser:
         "--context", "-cx", type=str, help="File containing program context"
     )
     parser.add_argument(
+        "--solution", "-sol", type=str, help="File containing example solution program"
+    )
+    parser.add_argument(
         "--exam", "-ex", type=str, help="Directory containing program context resources"
     )
     parser.add_argument(
@@ -469,24 +472,33 @@ def main():
             pvcheck_flag = "pvcheck.test" in entries
             dat_files = [f for f in entries if f.endswith(".dat")]  # program input
             md_files = [f for f in entries if f.endswith(".md")]  # program context
-
-            if not (pvcheck_flag and dat_files and md_files):
+            solutions = [f for f in entries if f.endswith(".c")]  # solution program
+            if not (pvcheck_flag and dat_files and md_files and solutions):
                 sys.exit(
-                    "--exam directory missing required files (.dat, .md, pvcheck.test)"
+                    "--exam directory missing required files (.dat, .md, pvcheck.test, .c)"
                 )
 
             quest_weights = questions["questions_weights"]
             program_input = os.path.join(exam_path, dat_files[0])
             file_target = os.path.join(exam_path, md_files[0])
+            sol_program = os.path.join(exam_path, solutions[0])
         else:
             sys.exit("--exam argument must be a directory")
     else:
         program_input = os.path.join(paths["exam_text"], input_args.input or "")
         file_target = os.path.join(paths["exam_text"], input_args.context or "")
+        sol_program = os.path.join(paths["exam_text"], input_args.solution or "")
 
     # CONTEXT
-    context = load_file(file_target)
-    context = "```markdown\n" + context + "\n```"
+    context = ""
+    if exam_dir or bool(input_args.context):
+        context = load_file(file_target)
+        context = "```markdown\n" + context + "\n```"
+
+    # SOLUTION PROGRAM
+    solution = ""
+    if exam_dir or bool(input_args.solution):
+        solution = load_file(sol_program)
 
     # OBJECTIVE TESTS
     metrics = dict.fromkeys(tests, -1.0)
@@ -503,7 +515,6 @@ def main():
     schema = load_file(schema_path)
     json_name = os.path.splitext(os.path.basename(schema_path))[0]
 
-    # json_name = "scustom"
     # schema = generate_schema_from_toml(topics, analysis)
 
     # PROMPTS CONSTRUCTION
@@ -525,14 +536,14 @@ def main():
         ),
         autoescape=select_autoescape(),
     )
-    sys_template = env.get_template("sp4.md")
-    usr_template = env.get_template("up3.md")
+    sys_template = env.get_template(input_args.system_prompt)
+    usr_template = env.get_template(input_args.user_prompt)
     templ_context = {
-        "context_flag": exam_dir or bool(context),
         "schema_flag": False,
         "schema": schema,
         "topics": args_md,
         "context": context,
+        "solution": solution,
         "program": program,
     }
     system_prompt = sys_template.render(templ_context)

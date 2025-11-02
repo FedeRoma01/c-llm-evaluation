@@ -25,7 +25,8 @@ The repository is organized as follows:
 │   └── config/              # Configuration files (relative to llm and tests)
 ├── config.toml              # Main configuration file
 ├── pyproject.toml           # Project and dependencies configuration managed by uv
-└── uv.lock                  # Lock file with exact dependency versions
+├── uv.lock                  # Lock file with exact dependency versions
+└── report_template.html     # Html template to output a web page with results 
 ```
 
 ### Key Components
@@ -154,7 +155,8 @@ uv run main.py <program_file.c> [options]
 
 * `--exam, -ex` (str): Directory containing exam resources (e.g., exam text, pvcheck test, input for the C program).  
 * `--input, -i` (str): Input for the C program.  
-* `--context, -cx` (str): Context for the C program.  
+* `--context, -cx` (str): Context for the C program.
+* `--solution, -sol` (str): Example solution program (used as reference).
 * `--config, -cf`: Enables pre-configured input file paths.  
 * `--system_prompt, -sp` (str): System prompt file (default: `sp6.md`).  
 * `--user_prompt, -up` (str): User prompt file (default: `up4.md`).  
@@ -170,12 +172,13 @@ When specifying the exam directory, it must contain the following files:
 
 * `pvcheck.test` – Test file for pvcheck.  
 * `<my_context>.md` – Context for the C program (e.g., exam text).  
-* `<my_input>.dat` – Input file for the C program. If this file exists, any input passed via `--input` will be ignored.
+* `<my_input>.dat` – Input file for the C program.
+* `<solution>.c` - Solution program to be used as reference.
 
 **Notes:**
 
-- The file names `my_context` and `my_input` are examples; file extensions must be `.md` and `.dat`.  
-- Using `--exam` automatically ignores `--input` and `--context` options.  
+- The file names `my_context`, `my_input` and `solution` are examples; file extensions must be `.md`, `.dat`, `.c`.  
+- Using `--exam` automatically ignores `--input`, `--context` and `--solution` options.  
 - Recommended when the directory contains both context and input files along with `pvcheck.test` to perform the pvcheck test.
 
 #### option `--provider`
