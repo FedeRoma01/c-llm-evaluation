@@ -28,7 +28,7 @@ class InvalidResponseError(APIError):
     pass
 
 
-def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
+def run_openrouter(sys_prompt, usr_prompt, schema, model, temperature, debug=True):
     """Execute an API call using OpenRouter with structured JSON output"""
     key = check_api_key("OPENROUTER_API_KEY1")
 
@@ -49,7 +49,7 @@ def run_openrouter(sys_prompt, usr_prompt, schema, model, debug=True):
                     "schema": schema,
                 },
             },
-            temperature=0,
+            temperature=temperature,
         )
     except Exception as e:
         raise APIError(f"OpenRouter API call failed: {e}") from e
@@ -86,6 +86,7 @@ def run_router_request(
     model,
     prompt_max_price,
     completion_max_price,
+    temperature,
     debug=False,
 ):
     """Execute direct OpenRouter API call with explicit provider control and price constraints."""
@@ -115,7 +116,7 @@ def run_router_request(
             "allow_fallbacks": True,  # to customize set this False and specify providers to be used
             # as fallbacks with "order": [providers]
         },
-        "temperature": 0,
+        "temperature": temperature,
         "structured_output": True,
         "usage": {"include": True},
     }
@@ -158,7 +159,7 @@ def run_router_request(
     return parsed, data.get("usage", {}), data.get("provider")
 
 
-def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
+def run_openai(sys_prompt, usr_prompt, schema, model, temperature, debug=False):
     """Execute an OpenAI API call with structured JSON output"""
     key = check_api_key("OPENAI_API_KEY")
     client = OpenAI(api_key=key)
@@ -177,7 +178,7 @@ def run_openai(sys_prompt, usr_prompt, schema, model, debug=False):
                     "schema": schema,
                 }
             },
-            temperature=0,
+            temperature=temperature,
         )
     except Exception as e:
         raise APIError(f"OpenAI API call failed: {e}") from e
@@ -295,6 +296,13 @@ def init_argparser() -> argparse.ArgumentParser:
         type=float,
         default=0,
         help="Max price for 1M tokens for the completion",
+    )
+    parser.add_argument(
+        "--temperature",
+        "-t",
+        type=int,
+        default=0,
+        help="Temperature value to be used in the model",
     )
     return parser
 
@@ -549,16 +557,23 @@ def main():
     system_prompt = sys_template.render(templ_context)
     user_prompt = usr_template.render(templ_context)
 
+    # TEMPERATURE
+    temperature = input_args.temperature
+
     # MODEL CALL
     model = input_args.model
     provider = input_args.provider
 
     try:
         if provider == "openai":
-            parsed, tokens = run_openai(system_prompt, user_prompt, schema, model)
+            parsed, tokens = run_openai(
+                system_prompt, user_prompt, schema, model, temperature
+            )
             tokens = openai_reshape_usage(tokens)
         elif provider:
-            parsed, tokens = run_openrouter(system_prompt, user_prompt, schema, model)
+            parsed, tokens = run_openrouter(
+                system_prompt, user_prompt, schema, model, temperature
+            )
         else:
             parsed, tokens, provider = run_router_request(
                 system_prompt,
@@ -567,6 +582,7 @@ def main():
                 model,
                 input_args.prompt_price,
                 input_args.completion_price,
+                temperature,
             )
     except InvalidResponseError as e:
         print(e)

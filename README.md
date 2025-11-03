@@ -164,6 +164,7 @@ uv run main.py <program_file.c> [options]
 * `--provider, -pr` (str): Provider to use for the specified model. 
 * `--prompt_price, -pp` (float): Maximum price per 1M tokens for the prompt (default: '0').  
 * `--completion_price, -cp` (float): Maximum price per 1M tokens for the completion (default: '0').
+* `--temperature, -t` (int): Temperature to be used in the model (default: 0).
 
 ### Specifications
 
