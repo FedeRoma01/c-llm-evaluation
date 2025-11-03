@@ -1,5 +1,6 @@
 ### Correct use of dynamic memory
-The maximum score in **dynamic memory management** is awarded when memory is handled safely, proportionally to the data size, and without leaks or invalid accesses.  
+Check that all dynamic allocations (malloc, realloc) are verified for success, properly freed, and used without invalid accesses or memory leaks.
+
 In the reference program:
 
 - The array of lines `dati->linee` is dynamically allocated with `malloc` and expanded using `realloc` as new data are read.
@@ -8,10 +9,7 @@ In the reference program:
 - The final realloc in leggi_file function is not checked for failure.
 - All allocated memory is correctly released at the end (`free(dati.linee)` in `main`).
 - No redundant allocations or double frees are present.
-
-The final realloc occurs after all data are successfully read; failure at that point would not corrupt data or cause leaks.
-It only affects space optimization, not correctness or safety.
-All previous allocations are verified, ensuring overall memory integrity.
+- The final realloc occurs after all data are successfully read; failure at that point would not corrupt data or cause leaks.
 
 **To achieve 10/10:**  
 The code must demonstrate a complete and safe memory lifecycle — *allocation → use → possible reallocation → deallocation* — with systematic error checking, no memory leaks, and structural consistency between allocated data and program logic.

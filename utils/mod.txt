@@ -1,5 +1,6 @@
 ### Modularity
-A program achieves the highest score in **modularity** when each logical sub-problem is handled by a dedicated, independent, and clearly defined function.
+Evaluate whether the program is decomposed into clear, single-purpose functions. Identify duplicated logic, oversized functions, or unclear separation of concerns.
+
 In the reference program:
 
 - Each exam requirement is implemented in a separate function:

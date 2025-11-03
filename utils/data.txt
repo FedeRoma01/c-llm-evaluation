@@ -1,5 +1,6 @@
 ### Appropriate data structures
-A program reaches the highest score in **appropriate data structures** when its representations directly reflect the problem domain and support efficient access and manipulation.
+Evaluate whether the chosen data structures fit the program’s functional goals. Detect inefficient, overcomplicated, or incorrect structure choices.
+
 In the reference program:
 
 - The structure `struct linea` encapsulates the ten integers of a line along with their sum, creating a clear, self-contained data unit.

@@ -1,5 +1,11 @@
 ### Error handling
-The highest score in **error handling** is assigned when the program prevents crashes, gracefully handles invalid input, and communicates errors clearly to the user.
+Verify that the program includes and correctly implements validation for:
+  - malloc/realloc return values
+  - fopen file opening results
+  - sscanf return value
+  - argc argument count
+Identify missing checks, incorrect conditions, or unhandled error paths.
+
 In the reference program:
 
 - Command-line arguments are validated (`if (argc != 2)`).
@@ -8,10 +14,8 @@ In the reference program:
 - Malformed lines are skipped but reported with debug messages (`# Linea ... not considered`).
 - The program always terminates in a controlled manner (`return 1` on failure).
 - The final realloc failure in `leggi_file` is only warned about but not treated as an error.
-
-All relevant runtime errors (invalid file, bad input, failed allocation) are detected and handled locally.
-Errors that are not propagated outward have no impact on execution correctness since invalid states are never reached.
-This local handling provides robustness without unnecessary complexity.
+- All relevant runtime errors (invalid file, bad input, failed allocation) are detected and handled locally.
+- Errors that are not propagated outward have no impact on execution correctness since invalid states are never reached.
 
 The following aspects must be considered correct:
 - The `leggi_file` function frees memory on realloc failure and returns error code.
