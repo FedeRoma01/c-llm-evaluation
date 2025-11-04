@@ -27,22 +27,22 @@ completion_tokens = 1
 [[topics]]
 name = "Modularity"
 weight = 1.0
-description = "mod.txt"
+description = "mod.md"
 
 [[topics]]
 name = "Correct use of dynamic memory"
 weight = 1.0
-description = "mem.txt"
+description = "mem.md"
 
 [[topics]]
 name = "Appropriate data structures"
 weight = 1.0
-description = "data.txt"
+description = "data.md"
 
 [[topics]]
 name = "Error handling"
 weight = 1.0
-description = "errors.txt"
+description = "errors.md"
 
 # SUMMARY ANALYSIS
 [[analysis]]

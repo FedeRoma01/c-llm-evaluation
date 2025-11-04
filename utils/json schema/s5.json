@@ -23,7 +23,7 @@
               "properties": {
                 "comment": {
                   "type": "string",
-                  "description": "It is an observation done on the user's program that must enlight a correct aspect or a problem in it. The observations must refer to impactful problems related to user specifications. It must be useful for providing a summary of the goodness of the code."
+                  "description": "It is an observation done on the user's program that must enlight a correct aspect or a problem in it. The observations must refer to impactful problems related to user specifications. It must be useful for providing a summary of the bad and good aspects of the code relatively to the topic."
                 },
                 "lines": {
                   "type": "array",
@@ -35,9 +35,14 @@
                   "type": "string",
                   "enum": ["high", "medium", "low"],
                   "description": "It enlight the relative comment criticality level. 'low' confirms correct or acceptable code, 'medium' is for already functional parts that could improved, 'high' identifies an actual problem, error, or violation of the topic’s evaluation rules that must be corrected."
+                },
+                "goodness": {
+                  "type": "string",
+                  "enum": ["+", "-"],
+                  "description": "Flag that specify if the relative comment enlight an error or a correct aspect in the code."
                 }
               },
-              "required": ["comment", "lines", "criticality"],
+              "required": ["comment", "lines", "criticality", "goodness"],
               "description": "Each score below 10 must correspond to at least one comment describing a necessary correction or improvement."
             }
           }
