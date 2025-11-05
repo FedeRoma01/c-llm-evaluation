@@ -433,7 +433,7 @@ def generate_schema_from_toml(topics, analysis):
             **analysis_props,
         },
         "required": ["evaluations", *list(analysis_props.keys())],
-        "description": "Output json schema to be respected",
+        "description": "Output json_schema to be respected",
     }
 
     return schema
@@ -451,9 +451,16 @@ def main():
     combined_weights = general_config.get("combined_weights")
 
     # PROGRAM LOAD
-    program_path = os.path.join(paths["programs"], input_args.program)
-    program_name = os.path.splitext(os.path.basename(program_path))[0]
-    program = add_line_numbers(load_file(program_path))
+    programs_names = []
+    is_single = False
+    if input_args.program.endswith(".c"):
+        # single program case
+        is_single = True
+        programs_names = os.path.splitext(os.path.basename(input_args.program))[0]
+    else:
+        # directory case
+        program_path = input_args.program
+        programs_names = os.listdir(input_args.program)
 
     # LLM CONFIG LOAD
     with open(paths["llm_config"], "rb") as f:
@@ -538,112 +545,125 @@ def main():
     system_prompt_name = os.path.splitext(os.path.basename(sys_prompt_path))[0]
     user_prompt_name = os.path.splitext(os.path.basename(usr_prompt_path))[0]
 
-    env = Environment(
-        loader=FileSystemLoader(
-            [os.path.dirname(usr_prompt_path), os.path.dirname(sys_prompt_path)]
-        ),
-        autoescape=select_autoescape(),
-    )
-    sys_template = env.get_template(input_args.system_prompt)
-    usr_template = env.get_template(input_args.user_prompt)
-    templ_context = {
-        "schema_flag": False,
-        "schema": schema,
-        "topics": args_md,
-        "context": context,
-        "solution": solution,
-        "program": program,
-    }
-    system_prompt = sys_template.render(templ_context)
-    user_prompt = usr_template.render(templ_context)
-
-    # TEMPERATURE
-    temperature = input_args.temperature
-
-    # MODEL CALL
-    model = input_args.model
-    provider = input_args.provider
-
-    try:
-        if provider == "openai":
-            parsed, tokens = run_openai(
-                system_prompt, user_prompt, schema, model, temperature
-            )
-            tokens = openai_reshape_usage(tokens)
-        elif provider:
-            parsed, tokens = run_openrouter(
-                system_prompt, user_prompt, schema, model, temperature
-            )
+    for program_name in programs_names:
+        if is_single:
+            # single program case
+            program_path = os.path.join(paths["programs"], input_args.program)
         else:
-            parsed, tokens, provider = run_router_request(
-                system_prompt,
-                user_prompt,
-                schema,
-                model,
-                input_args.prompt_price,
-                input_args.completion_price,
-                temperature,
-            )
-    except InvalidResponseError as e:
-        print(e)
-        sys.exit(1)
-    except APIError as e:
-        print(e)
-        sys.exit(1)
-    except OSError as e:
-        print(e)
-        sys.exit(1)
-    except Exception as e:
-        print(e)
-        sys.exit(1)
+            # directory case
+            program_path = os.path.join(input_args.program, program_name)
+        program = add_line_numbers(load_file(program_path))
 
-    call_cost = compute_cost(model, tokens, pricing)
+        env = Environment(
+            loader=FileSystemLoader(
+                [os.path.dirname(usr_prompt_path), os.path.dirname(sys_prompt_path)]
+            ),
+            autoescape=select_autoescape(),
+        )
+        sys_template = env.get_template(input_args.system_prompt)
+        usr_template = env.get_template(input_args.user_prompt)
+        templ_context = {
+            "schema_flag": False,
+            "schema": schema,
+            "topics": args_md,
+            "context": context,
+            "solution": solution,
+            "program": program,
+        }
+        system_prompt = sys_template.render(templ_context)
+        user_prompt = usr_template.render(templ_context)
 
-    # FINAL SCORE
-    combined = compute_final_score(
-        metrics,
-        parsed,
-        tests_weights,
-        llm_weights,
-        combined_weights,
-        quest_weights,
-        pvcheck_csv_scores,
-    )
+        # TEMPERATURE
+        temperature = input_args.temperature
 
-    # SAVE OUTPUT
-    timestamp = datetime.now().strftime("%H-%M-%S")
-    exam_prefix = f"{input_args.exam}_" if exam_dir else ""
-    output_file_name = f"{exam_prefix}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
-    output_dir = os.path.join(paths["output"], make_safe_dirname(model))
-    os.makedirs(output_dir, exist_ok=True)
-    output_file_path = os.path.join(output_dir, output_file_name)
+        # MODEL CALL
+        model = input_args.model
+        provider = input_args.provider
 
-    with open(output_file_path, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "LLM": parsed,
-                "model": {"name": model, "provider": provider},
-                "usage": tokens,
-                "call_cost": call_cost,
-                **combined,
-            },
-            f,
-            indent=2,
-            ensure_ascii=False,
+        try:
+            if provider == "openai":
+                parsed, tokens = run_openai(
+                    system_prompt, user_prompt, schema, model, temperature
+                )
+                tokens = openai_reshape_usage(tokens)
+            elif provider:
+                parsed, tokens = run_openrouter(
+                    system_prompt, user_prompt, schema, model, temperature
+                )
+            else:
+                parsed, tokens, provider = run_router_request(
+                    system_prompt,
+                    user_prompt,
+                    schema,
+                    model,
+                    input_args.prompt_price,
+                    input_args.completion_price,
+                    temperature,
+                )
+        except InvalidResponseError as e:
+            print(e)
+            sys.exit(1)
+        except APIError as e:
+            print(e)
+            sys.exit(1)
+        except OSError as e:
+            print(e)
+            sys.exit(1)
+        except Exception as e:
+            print(e)
+            sys.exit(1)
+
+        call_cost = compute_cost(model, tokens, pricing)
+
+        # FINAL SCORE
+        combined = compute_final_score(
+            metrics,
+            parsed,
+            tests_weights,
+            llm_weights,
+            combined_weights,
+            quest_weights,
+            pvcheck_csv_scores,
         )
 
-    print(f"Output saved in {output_file_path}")
+        # SAVE OUTPUT
+        timestamp = datetime.now().strftime("%H-%M-%S")
+        exam_prefix = f"{input_args.exam}_" if exam_dir else ""
+        output_file_name = f"{exam_prefix}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
+        output_dir = os.path.join(paths["output"], make_safe_dirname(model))
+        os.makedirs(output_dir, exist_ok=True)
+        output_file_path = os.path.join(
+            output_dir, "comments_extraction", output_file_name
+        )
 
-    with open(output_file_path, encoding="utf-8") as f:
-        data = json.load(f)
-    env = Environment(loader=FileSystemLoader("."))
-    template = env.get_template("report_template.html")
-    html_output = template.render(data=data)
+        with open(output_file_path, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "LLM": parsed,
+                    "model": {"name": model, "provider": provider},
+                    "usage": tokens,
+                    "call_cost": call_cost,
+                    **combined,
+                },
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
 
-    output_html_name = os.path.splitext(output_file_name)[0]
-    output_html_path = os.path.join(output_dir, f"{output_html_name}.html")
-    with open(output_html_path, "w", encoding="utf-8") as f:
-        f.write(html_output)
+        print(f"Output saved in {output_file_path}")
+
+        with open(output_file_path, encoding="utf-8") as f:
+            data = json.load(f)
+        env = Environment(loader=FileSystemLoader("."))
+        template = env.get_template("report_template.html")
+        html_output = template.render(data=data)
+
+        output_html_name = os.path.splitext(output_file_name)[0]
+        output_html_path = os.path.join(
+            output_dir, "comments_extraction", f"{output_html_name}.html"
+        )
+        with open(output_html_path, "w", encoding="utf-8") as f:
+            f.write(html_output)
 
 
 if __name__ == "__main__":

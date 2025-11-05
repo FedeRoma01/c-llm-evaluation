@@ -5,6 +5,7 @@
 !/resources/sources/soluzione.c
 !/resources/sources/modularity.c
 !/resources/sources/dynamic_mem.c
+!/resources/sources/README.md
 /output
 /prove
 /venv
