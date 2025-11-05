@@ -1,5 +1,10 @@
 /resources/sources/*
 !/resources/sources/prova.c
+!/resources/sources/errors.c
+!/resources/sources/data_struct.c
+!/resources/sources/soluzione.c
+!/resources/sources/modularity.c
+!/resources/sources/dynamic_mem.c
 /output
 /prove
 /venv
@@ -12,3 +17,5 @@ a.out
 a.exe
 prova_ollama.json
 /rendered_prompts
+utils/json_schema/comments_schema.json
+comment_extraction.py
