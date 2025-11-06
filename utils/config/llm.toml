@@ -23,6 +23,10 @@ completion_tokens = 0.88
 prompt_tokens = 0.25
 completion_tokens = 1
 
+[models."gemini-2.5-flash-lite"]
+prompt_token_count = 0.10
+candidates_token_coun = 0.40
+
 # EVALUATED TOPICS
 [[topics]]
 name = "Modularity"

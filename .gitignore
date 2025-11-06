@@ -6,6 +6,8 @@
 !/resources/sources/modularity.c
 !/resources/sources/dynamic_mem.c
 !/resources/sources/README.md
+utils/prompt/system/sys_comm_extr.md
+utils/prompt/user/usr_comm_extr.md
 /output
 /prove
 /venv
@@ -20,3 +22,4 @@ prova_ollama.json
 /rendered_prompts
 utils/json_schema/comments_schema.json
 comment_extraction.py
+.ruff_cache

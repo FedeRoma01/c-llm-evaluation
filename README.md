@@ -165,6 +165,7 @@ uv run main.py <program_file.c> [options]
 * `--prompt_price, -pp` (float): Maximum price per 1M tokens for the prompt (default: '0').  
 * `--completion_price, -cp` (float): Maximum price per 1M tokens for the completion (default: '0').
 * `--temperature, -t` (int): Temperature to be used in the model (default: 0).
+* `--output, -o` (str): Directory in which the final evaluation will be saved.
 
 ### Specifications
 
@@ -193,6 +194,9 @@ Behavior changes depending on whether a provider is specified:
   - Maximum prices set via `--prompt_price` and `--completion_price` will be applied.  
 
 **Note:** Price constraints are only applied when no provider is explicitly specified.
+
+#### option `--output`
+The specified output directory will contain another directory with the name of the used model where the output file will be saved. 
 
 ### Example
 

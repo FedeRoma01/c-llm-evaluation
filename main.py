@@ -8,6 +8,8 @@ from collections import defaultdict
 from datetime import datetime
 
 import requests
+from google import genai
+from google.genai import types
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from openai import OpenAI
 
@@ -159,7 +161,67 @@ def run_router_request(
     return parsed, data.get("usage", {}), data.get("provider")
 
 
-def run_openai(sys_prompt, usr_prompt, schema, model, temperature, debug=False):
+def run_gemini(sys_prompt, usr_prompt, schema, model, temperature, debug=False):
+    """Execute a Gemini API call with structured JSON output"""
+
+    # Check for the API key and initialize the client
+    # The genai library automatically looks for the GEMINI_API_KEY environment variable.
+    key = check_api_key("GEMINI_API_KEY")
+    gemini_schema = json_to_gemini_schema(schema)
+    client = genai.Client(api_key=key)
+
+    # Construct the request contents.
+    # Gemini models often handle system instructions best when prepended to the user prompt.
+    contents = [
+        types.Content(
+            role="user",
+            parts=[
+                types.Part.from_text(
+                    text=f"[SYSTEM]\n{sys_prompt}\n\n[USER]\n{usr_prompt}"
+                )
+            ],
+        )
+    ]
+
+    try:
+        # Execute the API call with JSON configuration
+        response = client.models.generate_content(
+            model=model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                temperature=temperature,
+                response_mime_type="application/json",
+                response_schema=gemini_schema,
+                candidate_count=1,
+            ),
+        )
+    except APIError as e:
+        raise APIError(f"Gemini API call failed: {e}") from e
+    except Exception as e:
+        raise Exception(f"An unexpected error occurred: {e}") from e
+
+    if debug:
+        # The raw JSON string is in the 'text' attribute
+        print(response.text)
+
+    try:
+        # The model returns a valid JSON string compliant with the schema.
+        parsed = json.loads(response.text)
+    except json.JSONDecodeError as e:
+        # Catch case where the response is not valid JSON, though rare with structured output.
+        raise InvalidResponseError(
+            f"Malformed or invalid JSON in Gemini response: {response.text}"
+        ) from e
+
+    # Usage information is in 'usage_metadata'. Use .model_dump() for a standard dict.
+    usage_info = response.usage_metadata.model_dump() if response.usage_metadata else {}
+
+    return parsed, usage_info
+
+
+def run_openai(
+    sys_prompt, usr_prompt, schema, model, temperature, provider, debug=False
+):
     """Execute an OpenAI API call with structured JSON output"""
     key = check_api_key("OPENAI_API_KEY")
     client = OpenAI(api_key=key)
@@ -204,18 +266,50 @@ def check_api_key(env_var) -> str:
     return key
 
 
+def json_to_gemini_schema(node: dict) -> types.Schema:
+    """Convert a JSON Schema Draft7-like dict to google.genai.types.Schema."""
+    type_map = {
+        "string": types.Type.STRING,
+        "number": types.Type.NUMBER,
+        "integer": types.Type.INTEGER,
+        "boolean": types.Type.BOOLEAN,
+        "array": types.Type.ARRAY,
+        "object": types.Type.OBJECT,
+    }
+
+    # Determine the type
+    json_type = node.get("type")
+    gem_type = type_map.get(json_type, types.Type.STRING)
+
+    schema_kwargs = {"type": gem_type}
+
+    # Handle arrays
+    if json_type == "array" and "items" in node:
+        schema_kwargs["items"] = json_to_gemini_schema(node["items"])
+
+    # Handle objects
+    if json_type == "object":
+        properties = node.get("properties", {})
+        schema_kwargs["properties"] = {
+            k: json_to_gemini_schema(v) for k, v in properties.items()
+        }
+        schema_kwargs["required"] = node.get("required", [])
+
+    return types.Schema(**schema_kwargs)
+
+
 def get_paths(config: dict, config_flag: bool) -> dict:
     """Return file paths from the TOML configuration, with optional overrides."""
     base = config["paths"]
     paths = {
         "llm_config": base["llm"],
-        "output": base["output_path"],
         "questions_config": base["questions"],
         "combined_weights": config.get("combined_weights"),
     }
     if config_flag:
         paths.update(
             {
+                "output": base.get("output_path"),
                 "schema": base.get("schema_path"),
                 "programs": base.get("programs_path"),
                 "exam_text": base.get("exam_text_path"),
@@ -226,7 +320,15 @@ def get_paths(config: dict, config_flag: bool) -> dict:
     else:
         paths.update(
             dict.fromkeys(
-                ["schema", "programs", "exam_text", "sys_prompt", "usr_prompt"], "."
+                [
+                    "output",
+                    "schema",
+                    "programs",
+                    "exam_text",
+                    "sys_prompt",
+                    "usr_prompt",
+                ],
+                ".",
             )
         )
     return paths
@@ -301,8 +403,14 @@ def init_argparser() -> argparse.ArgumentParser:
         "--temperature",
         "-t",
         type=int,
-        default=0,
+        default=0.3,
         help="Temperature value to be used in the model",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        help="Output directory where evaluation will be saved",
     )
     return parser
 
@@ -439,6 +547,40 @@ def generate_schema_from_toml(topics, analysis):
     return schema
 
 
+def render_prompts(sys_prompt_path, usr_prompt_path, context_dict):
+    """
+    Renders system and user prompts from Jinja2 templates.
+
+    Parameters
+    ----------
+    sys_prompt_path : str
+        Path to the system prompt template file.
+    usr_prompt_path : str
+        Path to the user prompt template file.
+    context_dict : dict
+        Dictionary with all variables available to the templates.
+
+    Returns
+    -------
+    tuple[str, str]
+        Rendered (system_prompt, user_prompt)
+    """
+    env = Environment(
+        loader=FileSystemLoader(
+            [os.path.dirname(sys_prompt_path), os.path.dirname(usr_prompt_path)]
+        ),
+        autoescape=select_autoescape(),
+    )
+
+    sys_template = env.get_template(os.path.basename(sys_prompt_path))
+    usr_template = env.get_template(os.path.basename(usr_prompt_path))
+
+    system_prompt = sys_template.render(context_dict)
+    user_prompt = usr_template.render(context_dict)
+
+    return system_prompt, user_prompt
+
+
 def main():
     parser = init_argparser()
     input_args = parser.parse_args()
@@ -481,7 +623,7 @@ def main():
     quest_weights, program_input, file_target = {}, "", ""
 
     if exam_dir:
-        exam_path = os.path.join(paths["exam_text"], input_args.exam)
+        exam_path = os.path.normpath(os.path.join(paths["exam_text"], input_args.exam))
         if not os.path.splitext(input_args.exam)[1]:  # directory case
             entries = {e.name for e in os.scandir(exam_path) if e.is_file()}
             pvcheck_flag = "pvcheck.test" in entries
@@ -494,15 +636,21 @@ def main():
                 )
 
             quest_weights = questions["questions_weights"]
-            program_input = os.path.join(exam_path, dat_files[0])
-            file_target = os.path.join(exam_path, md_files[0])
-            sol_program = os.path.join(exam_path, solutions[0])
+            program_input = os.path.normpath(os.path.join(exam_path, dat_files[0]))
+            file_target = os.path.normpath(os.path.join(exam_path, md_files[0]))
+            sol_program = os.path.normpath(os.path.join(exam_path, solutions[0]))
         else:
             sys.exit("--exam argument must be a directory")
     else:
-        program_input = os.path.join(paths["exam_text"], input_args.input or "")
-        file_target = os.path.join(paths["exam_text"], input_args.context or "")
-        sol_program = os.path.join(paths["exam_text"], input_args.solution or "")
+        program_input = os.path.normpath(
+            os.path.join(paths["exam_text"], input_args.input or "")
+        )
+        file_target = os.path.normpath(
+            os.path.join(paths["exam_text"], input_args.context or "")
+        )
+        sol_program = os.path.normpath(
+            os.path.join(paths["exam_text"], input_args.solution or "")
+        )
 
     # CONTEXT
     context = ""
@@ -515,18 +663,8 @@ def main():
     if exam_dir or bool(input_args.solution):
         solution = load_file(sol_program)
 
-    # OBJECTIVE TESTS
-    metrics = dict.fromkeys(tests, -1.0)
-    metrics[tests[0]] = compilation_test(program_path)
-    metrics[tests[1]] = time_test(program_input)
-    pvcheck_csv_scores = defaultdict(list)
-    if exam_dir and pvcheck_flag:
-        metrics[tests[2]] = pvcheck_test(
-            questions["questions_weights"], pvcheck_csv_scores, exam_path
-        )
-
     # SCHEMA
-    schema_path = os.path.join(paths["schema"], input_args.schema)
+    schema_path = os.path.normpath(os.path.join(paths["schema"], input_args.schema))
     schema = load_file(schema_path)
     json_name = os.path.splitext(os.path.basename(schema_path))[0]
 
@@ -540,28 +678,39 @@ def main():
     args_md_parts.extend(f"### {a['name']}\n{a['description']}" for a in analysis)
     args_md = "\n".join(args_md_parts)
 
-    sys_prompt_path = os.path.join(paths["sys_prompt"], input_args.system_prompt)
-    usr_prompt_path = os.path.join(paths["usr_prompt"], input_args.user_prompt)
+    sys_prompt_path = os.path.normpath(
+        os.path.join(paths["sys_prompt"], input_args.system_prompt)
+    )
+    usr_prompt_path = os.path.normpath(
+        os.path.join(paths["usr_prompt"], input_args.user_prompt)
+    )
     system_prompt_name = os.path.splitext(os.path.basename(sys_prompt_path))[0]
     user_prompt_name = os.path.splitext(os.path.basename(usr_prompt_path))[0]
 
     for program_name in programs_names:
         if is_single:
             # single program case
-            program_path = os.path.join(paths["programs"], input_args.program)
+            program_path = os.path.normpath(
+                os.path.join(paths["programs"], input_args.program)
+            )
         else:
             # directory case
-            program_path = os.path.join(input_args.program, program_name)
+            program_path = os.path.normpath(
+                os.path.join(input_args.program, program_name)
+            )
         program = add_line_numbers(load_file(program_path))
 
-        env = Environment(
-            loader=FileSystemLoader(
-                [os.path.dirname(usr_prompt_path), os.path.dirname(sys_prompt_path)]
-            ),
-            autoescape=select_autoescape(),
-        )
-        sys_template = env.get_template(input_args.system_prompt)
-        usr_template = env.get_template(input_args.user_prompt)
+        # OBJECTIVE TESTS
+        metrics = dict.fromkeys(tests, -1.0)
+        metrics[tests[0]] = compilation_test(program_path)
+        metrics[tests[1]] = time_test(program_input)
+        pvcheck_csv_scores = defaultdict(list)
+        if exam_dir and pvcheck_flag:
+            metrics[tests[2]] = pvcheck_test(
+                questions["questions_weights"], pvcheck_csv_scores, exam_path
+            )
+
+        # PROMPT COMPILING
         templ_context = {
             "schema_flag": False,
             "schema": schema,
@@ -570,8 +719,10 @@ def main():
             "solution": solution,
             "program": program,
         }
-        system_prompt = sys_template.render(templ_context)
-        user_prompt = usr_template.render(templ_context)
+
+        system_prompt, user_prompt = render_prompts(
+            sys_prompt_path, usr_prompt_path, templ_context
+        )
 
         # TEMPERATURE
         temperature = input_args.temperature
@@ -583,9 +734,14 @@ def main():
         try:
             if provider == "openai":
                 parsed, tokens = run_openai(
-                    system_prompt, user_prompt, schema, model, temperature
+                    system_prompt, user_prompt, schema, model, temperature, provider
                 )
                 tokens = openai_reshape_usage(tokens)
+            elif provider == "gemini":
+                parsed, tokens = run_gemini(
+                    system_prompt, user_prompt, schema, model, temperature, provider
+                )
+
             elif provider:
                 parsed, tokens = run_openrouter(
                     system_prompt, user_prompt, schema, model, temperature
@@ -626,14 +782,19 @@ def main():
             pvcheck_csv_scores,
         )
 
-        # SAVE OUTPUT
+        # SAVE OUTPUTpath
+        output_dir = os.path.normpath(
+            os.path.join(paths["output"], input_args.output or "")
+        )
         timestamp = datetime.now().strftime("%H-%M-%S")
         exam_prefix = f"{input_args.exam}_" if exam_dir else ""
         output_file_name = f"{exam_prefix}{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
-        output_dir = os.path.join(paths["output"], make_safe_dirname(model))
-        os.makedirs(output_dir, exist_ok=True)
-        output_file_path = os.path.join(
-            output_dir, "comments_extraction", output_file_name
+        final_output_dir = os.path.normpath(
+            os.path.join(output_dir, make_safe_dirname(model))
+        )
+        os.makedirs(final_output_dir, exist_ok=True)
+        output_file_path = os.path.normpath(
+            os.path.join(final_output_dir, output_file_name)
         )
 
         with open(output_file_path, "w", encoding="utf-8") as f:
@@ -659,8 +820,8 @@ def main():
         html_output = template.render(data=data)
 
         output_html_name = os.path.splitext(output_file_name)[0]
-        output_html_path = os.path.join(
-            output_dir, "comments_extraction", f"{output_html_name}.html"
+        output_html_path = os.path.normpath(
+            os.path.join(final_output_dir, f"{output_html_name}.html")
         )
         with open(output_html_path, "w", encoding="utf-8") as f:
             f.write(html_output)

@@ -1,20 +1,21 @@
 [project]
-name = "pythonproject3"
+name = "checkmyc"
 version = "0.1.0"
-description = "checkMyC"
+description = "Automated evaluation system for programs with LLM support"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "openai",
     "jinja2",
     "requests",
+    "google",
+    "google-genai>=1.48.0",
 ]
 
 [tool.black]
 line-length = 88
 target-version = ["py311"]
 skip-string-normalization = false
-
 
 [tool.ruff]
 line-length = 88

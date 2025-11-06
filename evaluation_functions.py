@@ -34,14 +34,14 @@ def compilation_test(file_path: str) -> float:
     try:
         result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
-            logging.error("Compilation error")
+            logging.info("Compilation error")
             return 0
 
         warnings = result.stderr.count("warning:")
         score = float(max(0, 10 - warnings))
         return float(score)
     except subprocess.TimeoutExpired:
-        logging.error("Compilation timed out")
+        logging.info("Compilation timed out")
         return 0
 
 
@@ -65,7 +65,7 @@ def time_test(p_input) -> float:
         elapsed = time.perf_counter() - start
 
         if result.returncode != 0:
-            logging.error(f"Program crashed or returned error {result.returncode}")
+            logging.info(f"Program crashed or returned error {result.returncode}")
             return 0
 
         else:
@@ -76,7 +76,7 @@ def time_test(p_input) -> float:
             else:
                 res = 6
     except subprocess.TimeoutExpired:
-        logging.error("Execution timed out")
+        logging.info("Execution timed out")
 
     return float(res)
 
@@ -116,7 +116,7 @@ def pvcheck_test(
         norm_weights = [w / total_weights for w in weights_list]
         return sum(v * w for v, w in zip(norm_scores, norm_weights, strict=False))
     except subprocess.TimeoutExpired:
-        logging.error("pvcheck execution timed out")
+        logging.info("pvcheck execution timed out")
         return 0
 
 
