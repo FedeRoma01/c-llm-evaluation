@@ -13,7 +13,7 @@
             "type": "number",
             "minimum": 0,
             "maximum": 10,
-            "description": "It must be a number between 0 and 10. It evaluates the topic satisfaction basing exclusively on the specifications provided by the user. Score must be 10 when all topic related comments have 'low' criticality."
+            "description": "It must be an integer number between 0 and 10. It evaluates the topic satisfaction basing exclusively on the specifications provided by the user. Score must be 10 when all topic related comments have 'low' criticality."
           },
           "evidences": {
             "type": "array",

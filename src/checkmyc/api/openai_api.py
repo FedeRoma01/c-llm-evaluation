@@ -1,0 +1,48 @@
+import json
+
+from openai import OpenAI
+
+from ..api.utils_api import APIError, InvalidResponseError, check_api_key
+
+
+def normalize_usage_openai(usage: dict) -> dict:
+    return {
+        "prompt_tokens": usage.get("input_tokens", 0),
+        "completion_tokens": usage.get("output_tokens", 0),
+        "cached_tokens": usage.get("cached_tokens", 0),
+        "total_tokens": usage.get("total_tokens", usage.get("total", 0)),
+    }
+
+
+def run_openai(sys_prompt, usr_prompt, schema, model, temperature, debug):
+    key = check_api_key("OPENAI_API_KEY")
+    client = OpenAI(api_key=key)
+    try:
+        response = client.responses.create(
+            model=model,
+            input=[
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": usr_prompt},
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "response_schema",
+                    "strict": True,
+                    "schema": schema,
+                }
+            },
+            temperature=temperature,
+        )
+    except Exception as e:
+        raise APIError(f"OpenAI API call failed: {e}") from e
+
+    if debug:
+        print(response)
+
+    try:
+        text = response.output[0].content[0].text
+        parsed = json.loads(text)
+    except (AttributeError, IndexError, json.JSONDecodeError) as err:
+        raise InvalidResponseError("Invalid JSON in response.") from err
+    return parsed, response.usage.model_dump()

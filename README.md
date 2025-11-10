@@ -13,48 +13,48 @@ Given a C program, the corresponding exam description, and evaluation criteria, 
 The repository is organized as follows:
 
 ```
-.
-├── main.py                  # Entry point of the application
-├── evaluation_functions.py  # Utility functions for compilation, testing, scoring
+project_root/
+├── src/
+│   └── checkmyc/
+│       ├── __main__.py                # Main entry point
+│       ├── code/                      # Contains evaluation logic and utilities
+│       │   ├── evals.py               # Compilation, timing, and pvcheck logic
+│       │   └── config.py              # Program setup functions
+|       |
+│       ├── api/                       # Contains API logic and utilities
+│       │   ├── model_runner.py        # API caller
+│       │   ├── gemini_api.py          # Gemini API call
+│       │   ├── openrouter_api.py      # Openrouter API call
+│       │   ├── openai_api.py          # Openai API call
+│       │   └── utils_api.py           # API utility functions
+|       |
+|       ├── config/                    # Contains .toml configuration files
+|       |   ├── llm.toml               # Model pricing and evaluation setup
+|       |   └── questions.toml         # Test weights and question configuration
+|       |
+│       └── data/                      # Static resources
+│           ├── prompts/               # API prompt templates
+│           │   ├── system/
+│           │   └── user/
+|           |
+│           ├── json_schema/           # JSON schemas for LLM structured outputs
+│           │   └── comments_schema.json
+|           |
+│           ├── topics/                # Markdown topic descriptions for evaluation (specified in llm.toml)
+│           └── templates/             # HTML report templates
+│
 ├── resources/
-│   ├── sources/              # Input C programs (hashed versions)
-│   └── 20220728/             # Exam-specific resources and related files
-├── utils/
-│   ├── prompt/              # Prompt templates (system and user) for LLMs
-│   ├── json schema/         # JSON schemas defining expected output structures
-│   └── config/              # Configuration files (relative to llm and tests)
-├── config.toml              # Main configuration file
-├── pyproject.toml           # Project and dependencies configuration managed by uv
-├── uv.lock                  # Lock file with exact dependency versions
-└── report_template.html     # Html template to output a web page with results 
+│   ├── sources/                       # C source programs and exam files
+|   └── 20220728/                      # exam folder (contains pvcheck.test, context.md, solution.c and input.dat)
+|
+├── output/                            # Generated output files and reports
+│   └── gpt-4_1-mini/                  # output folder containing gpt-4.1-mini based evaluations
+│
+├── config.toml                        # General configuration file
+├── pyproject.toml                     # Project metadata and dependencies
+├── uv.lock                            # Lock file with exact dependency versions for reproducible builds
+└── README.md                          # Documentation
 ```
-
-### Key Components
-
-* **resources**
-
-  * `sources`: contains student C programs.
-  * `20220728`: contains exam-related files (texts, test cases, etc.).
-
-* **configuration**
-
-  * `config.toml`: contains the main configurations.
-
-* **utils**
-
-  * `prompt`: stores user/system prompts used for guiding the LLMs.
-  * `json schema`: defines the expected evaluation schema in JSON format.
-  * `config`: configuration .toml files specifying directories, weights, and evaluation details.
-
-* **Scripts**
-
-  * `main.py`: orchestrates the evaluation process, handles prompts, interacts with LLMs, and saves results.
-  * `evaluation_functions.py`: manages compilation, test execution (via `pvcheck`), performance metrics, and score aggregation.
-
-* **uv project files**
-
-  * `pyproject.toml`: defines project metadata and dependencies.
-  * `uv.lock`: lock file with exact dependency versions for reproducible builds.
 
 ---
 
@@ -64,7 +64,7 @@ The repository is organized as follows:
 * **Automated Testing** — runs objective checks (`pvcheck`) and performance tests, generating weighted numeric scores for correctness and efficiency.  
 * **Performance Measurement** — measures execution time and contributes to the final quantitative assessment.  
 * **LLM-based Evaluation** — uses configurable large language models to perform topic-based qualitative analysis of the C program.  
-  - Produces detailed evaluations per topic (`score`, `evidences`, and `criticality` for each comment).  
+  - Produces detailed evaluations per topic (`score` and `evidences`).
   - Identifies **priority issues** and provides **practical improvement tips**.  
 * **Final Scoring** — integrates quantitative test results with LLM-derived evaluations using configurable weighting rules.  
 * **Structured Output** — stores all results in a hierarchical JSON structure including:
@@ -75,7 +75,6 @@ The repository is organized as follows:
   - Aggregated scores and weighting parameters used for final computation.
 * **HTML file** - visualizes the output in a web page.
 
-
 ---
 
 ## Installation
@@ -83,8 +82,8 @@ The repository is organized as follows:
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
-   cd <repository-name>
+   git clone https://github.com/FedeRoma01/checkMyC.git
+   cd checkMyC
    ```
 
 2. **Install uv (recommended)**
@@ -119,11 +118,13 @@ The repository is organized as follows:
 
 ### LLM Model API Key Requirements
 
-To use LLM models, an API key is required. Two types of keys are supported depending on the chosen model: `openrouter_api_key` and `openai_api_key`.
+To use LLM models, an API key is required. Three types of keys are supported depending on the chosen model: `openrouter_api_key`, `openai_api_key` and `gemini_api_key`.
 
 - **`openrouter_api_key`**: This key is used when the provider is not explicitly specified. In this case, OpenRouter automatically selects the appropriate provider for the requested model, handling API usage and costs according to the parameters provided in the request.
 
-- **`openai_api_key`**: This key is used when the specified provider is `OpenAI`. API calls are made directly to OpenAI, bypassing OpenRouter, and usage is billed according to OpenAI's pricing.
+- **`openai_api_key`**: This key is used when the specified provider is `openai`. API calls are made directly to OpenAI, bypassing OpenRouter, and usage is billed according to OpenAI's pricing.
+
+- **`gemini_api_key`**: This key is used when the specified provider is `gemini`. API calls are made directly to Google, bypassing OpenRouter, and usage is billed according to Google's pricing.
 
 To use them, you have to set it as a environment variable:
 
@@ -131,11 +132,13 @@ To use them, you have to set it as a environment variable:
 ```bash
 export OPENAI_API_KEY="your_api_key_here"
 export OPENROUTER_API_KEY="your_api_key_here"
+export GOOGLE_API_KEY="your_api_key_here"
 ```
 **Windows**:
 ```bash
 setx OPENAI_API_KEY "your_api_key_here"
 setx OPENROUTER_API_KEY "your_api_key_here"
+setx GOOGLE_API_KEY "your_api_key_here"
 ```
 
 ### Execute the program
@@ -143,7 +146,7 @@ setx OPENROUTER_API_KEY "your_api_key_here"
 Run the evaluator with:
 
 ```bash
-uv run main.py <program_file.c> [options]
+uv run checkmyc <program_file.c> <model> [options]
 ```
 
 ### Arguments
@@ -175,13 +178,13 @@ When specifying the exam directory, it must contain the following files:
 * `pvcheck.test` – Test file for pvcheck.  
 * `<my_context>.md` – Context for the C program (e.g., exam text).  
 * `<my_input>.dat` – Input file for the C program.
-* `<solution>.c` - Solution program to be used as reference.
+* `<my_solution>.c` - Solution program to be used as reference.
 
 **Notes:**
 
-- The file names `my_context`, `my_input` and `solution` are examples; file extensions must be `.md`, `.dat`, `.c`.  
+- The file names `my_context`, `my_input` and `my_solution` are examples; file extensions must be `.md`, `.dat`, `.c`.  
 - Using `--exam` automatically ignores `--input`, `--context` and `--solution` options.  
-- Recommended when the directory contains both context and input files along with `pvcheck.test` to perform the pvcheck test.
+- Recommended when the directory contains context, solution and input files along with `pvcheck.test` to perform the pvcheck test.
 
 #### option `--provider`
 Behavior changes depending on whether a provider is specified:
@@ -196,14 +199,14 @@ Behavior changes depending on whether a provider is specified:
 **Note:** Price constraints are only applied when no provider is explicitly specified.
 
 #### option `--output`
-The specified output directory will contain another directory with the name of the used model where the output file will be saved. 
+The specified output directory will be put in the directory with the name of the used model. 
 
 ### Example
 
 #### Execution with pvcheck
 
 ```bash
-uv run main.py prova.c -cf -ex 20220728 -m openai/gpt-4.1-mini -up up4.md -sp sp6.md -s s5.json
+uv run checkmyc prova.c gpt-4.1-mini -cf -ex 20220728 -up up4.md -sp sp6.md -s s5.json -pr openai
 ```
 
 This command evaluates `prova.c` against the exam resources in `20220728/` using `gpt-4.1-mini` and specified prompt/schema files. All files refer to pre-configured paths.
@@ -211,9 +214,10 @@ This command evaluates `prova.c` against the exam resources in `20220728/` using
 #### Execution without pvcheck
 
 ```bash
-uv run main.py prova.c -cf -i 20220728/Esempio_nel_testo.dat -m openai/gpt-4.1-mini -up up4.md -sp sp6.md -s s5.json
+uv run checkmyc prova.c gpt-4.1-mini -cf -i 20220728/Esempio_nel_testo.dat -up up4.md -sp sp6.md -s s5.json
 ```
-This command evaluates `prova.c` without any context using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
+This command evaluates `prova.c` without any context and reference solution, using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
+In this case specifying `-i` is necessary to have a correct performance test, since `prova.c` needs an input file to execute correctly.
 
 ---
 
@@ -235,13 +239,14 @@ Contains the model’s qualitative evaluation of the C program:
   - **`evidences`** — list of observations with:
     - **`comment`**: textual explanation of the issue or observation.
     - **`lines`**: list of line ranges in the source code (e.g., `"51-55"`, `"118-171"`).
+    - **`goodness`**: goodness indication of the related comment (`"+"` or `"-"`).
     - **`criticality`**: qualitative severity level (`"high"`, `"medium"`, `"low"`).
 - **`priority issues`** — concise list of the most severe problems detected.
 - **`practical_tips`** — prioritized suggestions for fixing or improving the code.
 
 ### **usage**
 Information about model usage and cost:
-- `input_tokens`, `output_tokens`, and `total_tokens` indicate the number of tokens processed.
+- `input_tokens`, `output_tokens`, `cached_tokens` and `total_tokens` indicate the number of tokens processed.
 - `call_cost` gives the estimated monetary cost of the model call.
 
 ### **tests_scores**

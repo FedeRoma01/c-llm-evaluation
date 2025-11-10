@@ -1,0 +1,295 @@
+import argparse
+import logging
+import re
+import sys
+import tomllib
+from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
+
+from .api.model_runner import normalize_usage_dispatch, run_model_dispatch
+from .code.config import (
+    build_prompt_context,
+    get_paths,
+    load_exam_context,
+    load_file,
+    programs_loading,
+    render_prompts,
+    save_json_and_html,
+)
+from .code.evals import (
+    add_line_numbers,
+    compilation_test,
+    compute_final_score,
+    pvcheck_test,
+    time_test,
+)
+
+
+class APIError(Exception):
+    """Base class for all API-related errors."""
+
+    pass
+
+
+class InvalidResponseError(APIError):
+    """Raised when the model response is invalid or empty."""
+
+    pass
+
+
+# Project layout helpers (resolve absolute dirs independent from cwd)
+PROJECT_ROOT = Path(__file__).resolve().parents[2]  # repo root
+PKG_ROOT = Path(__file__).resolve().parents[0]  # src/checkmyc
+DATA_DIR = PKG_ROOT / "data"
+TEMPLATES_DIR = DATA_DIR / "templates"
+
+
+def init_argparser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Evaluates a given C program")
+    parser.add_argument("program", type=str, help="C program file to evaluate")
+    parser.add_argument("model", type=str, help="Model to use for evaluation")
+    parser.add_argument("--input", "-i", type=str, help="Input file for the C program")
+    parser.add_argument(
+        "--context", "-cx", type=str, help="File containing program context"
+    )
+    parser.add_argument(
+        "--solution", "-sol", type=str, help="File containing example solution program"
+    )
+    parser.add_argument(
+        "--exam", "-ex", type=str, help="Directory containing program context resources"
+    )
+    parser.add_argument(
+        "--config",
+        "-cf",
+        action="store_true",
+        help="Use preconfigured paths from config.toml",
+    )
+    parser.add_argument(
+        "--debug",
+        "-d",
+        action="store_true",
+        help="Activate debug prints",
+    )
+    parser.add_argument(
+        "--user_prompt", "-up", type=str, default="up4.md", help="User prompts file"
+    )
+    parser.add_argument(
+        "--system_prompt", "-sp", type=str, default="sp6.md", help="System prompts file"
+    )
+    parser.add_argument(
+        "--schema",
+        "-s",
+        type=str,
+        default="s5.json",
+        help="JSON output schema for the model",
+    )
+    parser.add_argument(
+        "--provider", "-pr", type=str, help="Provider (openai/gemini/openrouter)"
+    )
+    parser.add_argument(
+        "--prompt_price",
+        "-pp",
+        type=float,
+        default=0.000001,
+        help="Max price per 1M prompt tokens",
+    )
+    parser.add_argument(
+        "--completion_price",
+        "-cp",
+        type=float,
+        default=0.000001,
+        help="Max price per 1M completion tokens",
+    )
+    parser.add_argument(
+        "--temperature", "-t", type=float, default=0.3, help="Model temperature"
+    )
+    parser.add_argument("--output", "-o", type=str, help="Output directory for results")
+    return parser
+
+
+def compute_cost(model_name, tokens_count, pricing_data):
+    if model_name not in pricing_data:
+        return " Not specified in llm.toml"
+
+    model_prices = pricing_data[model_name]
+    tot_cost = 0
+    for token_type, count in tokens_count.items():
+        if token_type not in model_prices:
+            continue
+        rate = model_prices[token_type]  # USD per 1M tokens
+        tot_cost += (count / 1000000) * rate
+    return tot_cost
+
+
+def make_safe_dirname(s: str) -> str:
+    safe_name = re.sub(r"[^a-zA-Z0-9-_]", "_", s)
+    safe_name = re.sub(r"_+", "_", safe_name)
+    safe_name = safe_name.strip("_")
+    return safe_name
+
+
+logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
+
+
+def main():
+    parser = init_argparser()
+    input_args = parser.parse_args()
+    debug = input_args.debug
+    path_flag = input_args.config
+
+    # CONFIGURATION LOAD
+    config_path = PROJECT_ROOT / "config.toml"
+    if not config_path.exists():
+        raise FileNotFoundError(
+            f"config.toml not found at expected location: {config_path}"
+        )
+    with config_path.open("rb") as f:
+        general_config = tomllib.load(f)
+
+    paths = get_paths(general_config, path_flag, input_args)
+    combined_weights = general_config.get("combined_weights", {})
+
+    # LLM CONFIG LOAD
+    llm_config_path = paths.get("llm_config")
+    if not llm_config_path:
+        raise FileNotFoundError("llm_config path missing in config.toml")
+    with open(llm_config_path, "rb") as f:
+        llm_config = tomllib.load(f)
+    topics, analysis = llm_config["topics"], llm_config["analysis"]
+    llm_weights = {a["name"]: a["weight"] for a in topics}
+    pricing = llm_config.get("models", {})
+
+    # QUESTIONS CONFIG LOAD
+    questions_config_path = paths.get("questions_config")
+    if not questions_config_path:
+        raise FileNotFoundError("questions_config path missing in config.toml")
+    with open(questions_config_path, "rb") as f:
+        questions = tomllib.load(f)
+    tests_weights = questions["tests_weights"]
+    tests = list(tests_weights.keys())
+
+    # PROGRAM LOAD (prepare list of program file Paths)
+    program_paths = programs_loading(paths, ".c")
+
+    # EXAM/CONTEXT & SOLUTION HANDLING
+    exam_dir, exam_ctx = load_exam_context(input_args, paths, questions)
+
+    # SCHEMA
+    schema_path = paths.get("schema")
+    if not schema_path or not Path(schema_path).exists():
+        raise FileNotFoundError(f"Schema file not found: {schema_path}")
+    schema = load_file(schema_path)
+    json_name = Path(schema_path).stem
+
+    # PROMPTS CONSTRUCTION
+    args_md = build_prompt_context(topics, analysis)
+    sys_prompt_path = paths.get("sys_prompt")
+    usr_prompt_path = paths.get("usr_prompt")
+    if not sys_prompt_path or not Path(sys_prompt_path).exists():
+        raise FileNotFoundError(f"System prompt not found: {sys_prompt_path}")
+    if not usr_prompt_path or not Path(usr_prompt_path).exists():
+        raise FileNotFoundError(f"User prompt not found: {usr_prompt_path}")
+
+    system_prompt_name = Path(sys_prompt_path).stem
+    user_prompt_name = Path(usr_prompt_path).stem
+
+    for program_path in program_paths:
+        program_name = Path(program_path).name
+        program_text = add_line_numbers(load_file(program_path))
+
+        # OBJECTIVE TESTS
+        metrics = dict.fromkeys(tests, -1.0)
+        metrics[tests[0]] = compilation_test(str(program_path))
+        metrics[tests[1]] = time_test(exam_ctx.program_input)
+        pvcheck_csv_scores = defaultdict(list)
+        if exam_dir and exam_ctx.pvcheck_flag:
+            metrics[tests[2]] = pvcheck_test(
+                questions["questions_weights"],
+                pvcheck_csv_scores,
+                str(exam_ctx.exam_path),
+            )
+
+        # PROMPT COMPILING
+        templ_context = {
+            "schema_flag": False,
+            "schema": schema,
+            "topics": args_md,
+            "context": exam_ctx.context,
+            "solution": exam_ctx.solution,
+            "program": program_text,
+        }
+
+        system_prompt, user_prompt = render_prompts(
+            str(sys_prompt_path), str(usr_prompt_path), templ_context
+        )
+
+        if debug:
+            with open(
+                PROJECT_ROOT / "rendered_prompts" / "system_prompt.md",
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(system_prompt)
+            with open(
+                PROJECT_ROOT / "rendered_prompts" / "user_prompt.md",
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(user_prompt)
+
+        # TEMPERATURE
+        temperature = input_args.temperature
+
+        # MODEL CALL
+        model = input_args.model
+        provider = input_args.provider
+        parsed, usage, provider = run_model_dispatch(
+            provider, model, system_prompt, user_prompt, schema, temperature, debug
+        )
+        tokens = normalize_usage_dispatch(provider, usage)
+
+        call_cost = compute_cost(model, tokens, pricing)
+
+        # FINAL SCORE
+        combined = compute_final_score(
+            metrics,
+            parsed,
+            tests_weights,
+            llm_weights,
+            combined_weights,
+            exam_ctx.quest_weights,
+            pvcheck_csv_scores,
+        )
+
+        # SAVE OUTPUT path
+        timestamp = datetime.now().strftime("%H-%M-%S")
+        output_dir = (
+            Path(paths.get("output"))
+            / make_safe_dirname(input_args.model)
+            / (input_args.output or "")
+        )
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_name = f"{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
+        output_path = output_dir / output_name
+
+        save_json_and_html(
+            output_path, parsed, input_args.model, provider, tokens, call_cost, combined
+        )
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except FileNotFoundError as e:
+        logger.error(e)
+        sys.exit(1)
+    except (APIError, InvalidResponseError, OSError) as e:
+        logger.error(f"API or system error: {e}")
+        sys.exit(1)
+    except TypeError as e:
+        logger.error(e)
+    except Exception:
+        logger.exception("Unexpected fatal error")
+        sys.exit(1)

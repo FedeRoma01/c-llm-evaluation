@@ -7,8 +7,6 @@ import subprocess
 import time
 from pathlib import Path
 
-logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
 
 def add_line_numbers(code: str) -> str:
     """Add line numbers for relative comments in the output."""
@@ -30,7 +28,7 @@ def compilation_test(file_path: str) -> float:
         logging.error("gcc not found")
         return -1
 
-    compile_cmd = ["gcc", "-Wall", "-Wextra", str(Path(file_path))]
+    compile_cmd = ["gcc", "-Wall", "-Wextra", file_path]
     try:
         result = subprocess.run(compile_cmd, capture_output=True, text=True, timeout=10)
         if result.returncode != 0:
@@ -53,11 +51,11 @@ def time_test(p_input) -> float:
         logging.error(f"Executable {exec_name} not found")
         return -1
 
-    if not Path(p_input).exists():
+    if not p_input.exists():
         logging.error(f"Input file {p_input} not found")
         return -1
 
-    run_cmd = [f"./{exec_name}", str(Path(p_input))]
+    run_cmd = [f"./{exec_name}", str(p_input)]
     res = 0
     try:
         start = time.perf_counter()

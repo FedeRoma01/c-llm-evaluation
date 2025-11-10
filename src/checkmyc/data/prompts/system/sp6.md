@@ -144,6 +144,7 @@ else: # at least one high
 ```
 
 **Enforcement:**
+- The score must be an integer number.
 - Only negative evidences affect the score.  
 - Presence of positive comments must **never** reduce the score.  
 - If no negative evidences are present, `score = 10`.  
@@ -218,7 +219,9 @@ The object must include the three required fields:
 1. **Language:** English only.  
 2. **Schema compliance:** Follow the schema exactly; extra or missing fields are invalid.  
 3. **Criticality logic:** Use Step 2’s table precisely; never invent new labels.  
-4. **Score mapping:** Derive scores strictly from Step 3 pseudocode, considering only negative comments.  
+4. **Score mapping:**
+   - Derive scores strictly from Step 3 pseudocode, considering only negative comments.
+   - Score must be exclusively integer numbers. 
 5. **Validation before output:**  
    - Ensure every comment is in English.  
    - Ensure scores match the criticality distribution of negative evidences only.  

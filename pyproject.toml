@@ -12,6 +12,12 @@ dependencies = [
     "google-genai>=1.48.0",
 ]
 
+[project.scripts]
+checkmyc = "checkmyc.__main__:main"
+
+[tool.uv]
+package = true
+
 [tool.black]
 line-length = 88
 target-version = ["py311"]

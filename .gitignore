@@ -1,3 +1,6 @@
+# -----------------------------
+#  Project-specific exclusions
+# -----------------------------
 /resources/sources/*
 !/resources/sources/prova.c
 !/resources/sources/errors.c
@@ -6,20 +9,61 @@
 !/resources/sources/modularity.c
 !/resources/sources/dynamic_mem.c
 !/resources/sources/README.md
-utils/prompt/system/sys_comm_extr.md
-utils/prompt/user/usr_comm_extr.md
-/output
+
+/output/*
+!/output/gpt-4_1-mini
+/output/gpt-4_1-mini/*
+!/output/gpt-4_1-mini/20220728_11-15-09_prova_sp5_up4_s5.json
 /prove
-/venv
-/.venv
-.idea/
-__pycache__/
-*.pyc
-a.out
-.python-version
-a.exe
-prova_ollama.json
 /rendered_prompts
-utils/json_schema/comments_schema.json
-comment_extraction.py
+
+src/checkmyc/data/prompts/system/sys_comm_extr.md
+src/checkmyc/data/prompts/user/usr_comm_extr.md
+src/checkmyc/data/json_schema/comments_schema.json
+src/checkmyc/code/extractor.py
+
+prova_ollama.json
+.pre-commit-config.yaml
 .ruff_cache
+.python-version
+
+# -----------------------------
+#  Python build and runtime
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+*.log
+*.out
+*.exe
+*.json
+*.html
+
+# -----------------------------
+#  Virtual environments
+# -----------------------------
+.venv/
+venv/
+env/
+.env/
+.uv/
+.uv-cache/
+
+# -----------------------------
+#  IDE and system files
+# -----------------------------
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+#  Distribution and build dirs
+# -----------------------------
+build/
+dist/
+.eggs/
+.cache/
+tmp/
