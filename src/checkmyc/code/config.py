@@ -199,15 +199,13 @@ def load_file(path: str | Path, mode="r", encoding="utf-8"):
 def programs_loading(paths, extension):
     """Get programs names to be evaluated. Return empty string if path is falsy."""
     p = paths.get("programs")
+    if not p.exists():
+        raise FileNotFoundError(f"Program file or directory not found: {p}")
     if p.is_file() and p.suffix == extension:
         # single program case
-        if not p.exists():
-            raise FileNotFoundError(f"Program file not found: {p}")
         program_paths = [p]
     elif p.is_dir():
         # directory case
-        if not p.exists():
-            raise FileNotFoundError(f"Program directory not found: {p}")
         program_paths = [
             p / prog
             for prog in p.iterdir()

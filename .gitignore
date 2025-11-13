@@ -13,14 +13,15 @@
 /output/*
 !/output/gpt-4_1-mini
 /output/gpt-4_1-mini/*
-!/output/gpt-4_1-mini/20220728_11-15-09_prova_sp5_up4_s5.json
 /prove
 /rendered_prompts
+/naming.py
+/extractor
 
-src/checkmyc/data/prompts/system/sys_comm_extr.md
-src/checkmyc/data/prompts/user/usr_comm_extr.md
-src/checkmyc/data/json_schema/comments_schema.json
-src/checkmyc/code/extractor.py
+#src/checkmyc/data/prompts/system/sys_comm_extr.md
+#src/checkmyc/data/prompts/user/usr_comm_extr.md
+#src/checkmyc/data/json_schema/comments_schema.json
+#src/checkmyc/code/extractor.py
 
 prova_ollama.json
 .pre-commit-config.yaml

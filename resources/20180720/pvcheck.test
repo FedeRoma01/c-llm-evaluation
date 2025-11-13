@@ -1,0 +1,217 @@
+# File di test per la prova di laboratorio del 20/07/2018.
+
+[.TEST]
+Tre comandi luce
+
+[.ARGS]
+.FILE
+
+[.FILE]
+200 LIGHT
+20000 LIGHT
+30000 LIGHT
+
+[MAX-PRESSIONI]
+LIGHT
+
+[MEDIA-LUCE]
+10
+
+[TOT-ALTA-VELOCITA]
+0
+
+[TOT-ACCENSIONE]
+0
+
+[ORDINAMENTO]
+200 LIGHT
+20000 LIGHT
+30000 LIGHT
+
+#-------------------------------------------------------------------
+
+[.TEST]
+Due max ma non primi nel file
+
+[.ARGS]
+.FILE
+
+[.FILE]
+0 LIGHT
+10000 1h
+20000 3h
+30000 L
+40000 M
+50000 L
+60000 M
+70000 OFF
+
+[MAX-PRESSIONI]
+L
+
+[MEDIA-LUCE]
+0
+
+[TOT-ALTA-VELOCITA]
+0
+
+[TOT-ACCENSIONE]
+40
+
+[ORDINAMENTO]
+10000 1h
+20000 3h
+30000 L
+50000 L
+0 LIGHT
+40000 M
+60000 M
+70000 OFF
+
+#-------------------------------------------------------------------
+
+[.TEST]
+Un comando per tipo e doppio OFF
+
+[.ARGS]
+.FILE
+
+[.FILE]
+10000 LIGHT
+20000 L
+30000 H
+40000 M
+50000 1h
+60000 3h
+70000 OFF
+80000 OFF
+
+[MAX-PRESSIONI]
+OFF
+
+[MEDIA-LUCE]
+10
+
+[TOT-ALTA-VELOCITA]
+10
+
+[TOT-ACCENSIONE]
+50
+
+[ORDINAMENTO]
+50000 1h
+60000 3h
+30000 H
+20000 L
+10000 LIGHT
+40000 M
+70000 OFF
+80000 OFF
+
+#-------------------------------------------------------------------
+[.TEST]
+Comandi di accensione alternati - no light - no off
+
+[.ARGS]
+.FILE
+
+[.FILE]
+10000 L
+20000 H
+30000 M
+40000 H
+50000 L
+60000 H
+70000 M
+80000 H
+
+[MAX-PRESSIONI]
+H
+
+[MEDIA-LUCE]
+86400
+
+[TOT-ALTA-VELOCITA]
+86350
+
+[TOT-ACCENSIONE]
+86390
+
+[ORDINAMENTO]
+20000 H
+40000 H
+60000 H
+80000 H
+10000 L
+50000 L
+30000 M
+70000 M
+
+#-------------------------------------------------------------------
+[.TEST]
+Solo comandi H
+
+[.ARGS]
+.FILE
+
+[.FILE]
+0 H
+10000 H
+20000 H
+30000 H
+40000 H
+
+[MAX-PRESSIONI]
+H
+
+[MEDIA-LUCE]
+86400
+
+[TOT-ALTA-VELOCITA]
+86400
+
+[TOT-ACCENSIONE]
+86400
+
+[ORDINAMENTO]
+0 H
+10000 H
+20000 H
+30000 H
+40000 H
+
+#-------------------------------------------------------------------
+[.TEST]
+Tre accensioni e spegnimenti
+
+[.ARGS]
+.FILE
+
+[.FILE]
+10000 L
+20000 OFF
+30000 M
+40000 OFF
+50000 H
+60000 OFF
+
+[MAX-PRESSIONI]
+OFF
+
+[MEDIA-LUCE]
+86400
+
+[TOT-ALTA-VELOCITA]
+10
+
+[TOT-ACCENSIONE]
+30
+
+[ORDINAMENTO]
+50000 H
+10000 L
+30000 M
+20000 OFF
+40000 OFF
+60000 OFF
+#-------------------------------------------------------------------

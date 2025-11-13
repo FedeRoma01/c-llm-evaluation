@@ -1,7 +1,7 @@
 ### Appropriate data structures
 Evaluate whether the chosen data structures fit the program’s functional goals. Detect inefficient, overcomplicated, or incorrect structure choices.
 
-In the reference program:
+In the reference program, the following aspects are present. **These ones must be considered correct and must not be considered errors with `goodness`: `-`**.
 
 - The structure `struct linea` encapsulates the ten integers of a line along with their sum, creating a clear, self-contained data unit.
 - The structure `struct file` organizes the total number of lines and their dynamic array, providing a complete in-memory representation of the file.

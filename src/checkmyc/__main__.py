@@ -265,11 +265,7 @@ def main():
 
         # SAVE OUTPUT path
         timestamp = datetime.now().strftime("%H-%M-%S")
-        output_dir = (
-            Path(paths.get("output"))
-            / make_safe_dirname(input_args.model)
-            / (input_args.output or "")
-        )
+        output_dir = Path(paths.get("output")) / make_safe_dirname(input_args.model)
         output_dir.mkdir(parents=True, exist_ok=True)
         output_name = f"{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
         output_path = output_dir / output_name

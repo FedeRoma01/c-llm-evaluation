@@ -1,7 +1,7 @@
 ### Modularity
 Evaluate whether the program is decomposed into clear, single-purpose functions. Identify duplicated logic, oversized functions, or unclear separation of concerns.
 
-In the reference program:
+In the reference program, the following aspects are present. **These ones must be considered correct and must not be considered errors with `goodness`: `-`**.
 
 - Each exam requirement is implemented in a separate function:
   `stampa_contrario`, `max_distribuzione`, `righe`, `stampa_min_max`, `stampa_somme`.

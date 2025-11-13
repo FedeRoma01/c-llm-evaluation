@@ -6,7 +6,7 @@ Verify that the program includes and correctly implements validation for:
   - argc argument count
 Identify missing checks, incorrect conditions, or unhandled error paths.
 
-In the reference program:
+In the reference program, the following aspects are present. **These ones must be considered correct and must not be considered errors with `goodness`: `-`**.
 
 - Command-line arguments are validated (`if (argc != 2)`).
 - File opening is checked and reported explicitly if it fails (`if ((f = fopen(...)) == NULL)`).
@@ -16,10 +16,6 @@ In the reference program:
 - The final realloc failure in `leggi_file` is only warned about but not treated as an error.
 - All relevant runtime errors (invalid file, bad input, failed allocation) are detected and handled locally.
 - Errors that are not propagated outward have no impact on execution correctness since invalid states are never reached.
-
-The following aspects must be considered correct:
-- The `leggi_file` function frees memory on realloc failure and returns error code.
-- The final realloc failure in `leggi_file` is only warned about but not treated as an error.
 
 **To achieve 10/10:**
 The program must handle all foreseeable error cases — invalid parameters, missing files, allocation failures, malformed input — without abnormal termination. Every error must produce a clear, informative message, while preserving internal data consistency and ensuring controlled program exit.
