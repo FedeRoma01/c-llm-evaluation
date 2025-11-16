@@ -180,7 +180,7 @@ int confronta(const void *a, const void *b) {
 	comp=strcmp(ca->comando, cb->comando);
 	if (comp!=0)
 		return comp;
-	return ((ca->timestamp)-(ca->timestamp));
+	return ((ca->timestamp)-(cb->timestamp));
 
 }
 

@@ -1,0 +1,100 @@
+<!-- templates/comments.html -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Comments</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      font-family: "Segoe UI", Roboto, sans-serif;
+      background-color: #0d1117;
+      color: #e6edf3;
+      margin: 40px auto;
+      max-width: 800px;
+      line-height: 1.5;
+    }
+    h1 {
+      text-align: center;
+      color: #58a6ff;
+      margin-bottom: 40px;
+    }
+    .topic {
+      background: #161b22;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+      margin-bottom: 25px;
+      padding: 20px;
+      border: 1px solid #30363d;
+    }
+    .topic h2 {
+      margin-top: 0;
+      color: #79c0ff;
+      font-size: 1.25rem;
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+    .comment {
+      background: #1c2128;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid #30363d;
+      transition: background 0.2s;
+    }
+    .comment:hover {
+      background: #21262d;
+    }
+    .rank {
+      background: #238636;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      font-weight: 600;
+      min-width: 30px;
+      text-align: center;
+    }
+    .text {
+      flex: 1;
+      color: #c9d1d9;
+    }
+    .no-comments {
+      color: #8b949e;
+      font-style: italic;
+      margin-left: 6px;
+    }
+    a, a:visited {
+      color: #58a6ff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>Topics Comments</h1>
+  {% for topic in data.topics %}
+    <div class="topic">
+      <h2>{{ topic.name }}</h2>
+      {% if topic.comments %}
+        {% for comment in topic.comments | sort(attribute="rank", reverse=True) %}
+          <div class="comment">
+            <span class="rank">{{ comment.rank }}</span>
+            <span class="text">{{ comment.comment }}</span>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="no-comments">No comments.</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</body>
+</html>

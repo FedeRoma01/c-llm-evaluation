@@ -44,6 +44,12 @@
             border-radius: 5px;
             padding: 1rem;
         }
+        a {
+            color: p;
+        }
+        a:visited {
+            color: blue;
+        }
     </style>
 </head>
 <body>
@@ -52,6 +58,7 @@
     <p><strong>Provider:</strong> {{ data.model.provider }}</p>
     <p><strong>Final Score:</strong> {{ data.final_score }}</p>
     <p><strong>Call cost:</strong> ${{ data.call_cost }}</p>
+    <p><strong>Evaluated program:</strong> <a href="{{ data.program.path }}">{{ data.program.name }}</a></p>
 
     <h2>LLM Results</h2>
     <table class="outer-table">

@@ -10,6 +10,7 @@ from pathlib import Path
 from .api.model_runner import normalize_usage_dispatch, run_model_dispatch
 from .code.config import (
     build_prompt_context,
+    generate_schema,
     get_paths,
     load_exam_context,
     load_file,
@@ -177,11 +178,16 @@ def main():
     exam_dir, exam_ctx = load_exam_context(input_args, paths, questions)
 
     # SCHEMA
+    """
     schema_path = paths.get("schema")
     if not schema_path or not Path(schema_path).exists():
         raise FileNotFoundError(f"Schema file not found: {schema_path}")
     schema = load_file(schema_path)
     json_name = Path(schema_path).stem
+    """
+    topic_list = [t["name"] for t in topics]
+    schema = generate_schema(topic_list)
+    json_name = "s5"
 
     # PROMPTS CONSTRUCTION
     args_md = build_prompt_context(topics, analysis)
@@ -197,6 +203,8 @@ def main():
 
     for program_path in program_paths:
         program_name = Path(program_path).name
+        abs_program_path = "file://" + str(Path(program_path).resolve())
+        program_info = {"name": program_name, "path": abs_program_path}
         program_text = add_line_numbers(load_file(program_path))
 
         # OBJECTIVE TESTS
@@ -271,7 +279,14 @@ def main():
         output_path = output_dir / output_name
 
         save_json_and_html(
-            output_path, parsed, input_args.model, provider, tokens, call_cost, combined
+            program_info,
+            output_path,
+            parsed,
+            input_args.model,
+            provider,
+            tokens,
+            call_cost,
+            combined,
         )
 
 

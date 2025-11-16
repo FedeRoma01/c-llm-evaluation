@@ -11,11 +11,79 @@ DATA_DIR = PKG_ROOT / "data"
 TEMPLATES_DIR = DATA_DIR / "templates"
 
 
+def generate_schema(topics: list[str]) -> dict:
+    n = len(topics)
+    base_schema = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "evaluations": {
+                "type": "array",
+                "minItems": n,
+                "maxItems": n,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "name": {"type": "string", "enum": topics},
+                        "score": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 10,
+                            "description": (
+                                "Integer number between 0 and 10. "
+                                "It evaluates the topic satisfaction based exclusively "
+                                "on the specifications provided by the user."
+                            ),
+                        },
+                        "evidences": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "comment": {"type": "string"},
+                                    "lines": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "pattern": "^\\d+(-\\d+)?$",
+                                        },
+                                        "default": [],
+                                    },
+                                    "criticality": {
+                                        "type": "string",
+                                        "enum": ["high", "medium", "low"],
+                                    },
+                                    "goodness": {"type": "string", "enum": ["+", "-"]},
+                                },
+                                "required": [
+                                    "comment",
+                                    "lines",
+                                    "criticality",
+                                    "goodness",
+                                ],
+                            },
+                        },
+                    },
+                    "required": ["name", "score", "evidences"],
+                },
+                "description": f"Must contain exactly {n} items, one per topic.",
+            },
+            "priority issues": {"type": "array", "items": {"type": "string"}},
+            "practical_tips": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["evaluations", "priority issues", "practical_tips"],
+    }
+    return base_schema
+
+
 def save_json_and_html(
-    output_path, parsed, model, provider, tokens, call_cost, combined
+    program_info, output_path, parsed, model, provider, tokens, call_cost, combined
 ):
     """Save JSON and HTML report from parsed evaluation data"""
     output_data = {
+        "program": program_info,
         "LLM": parsed,
         "model": {"name": model, "provider": provider},
         "usage": tokens,
