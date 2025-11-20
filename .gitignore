@@ -71,3 +71,4 @@ dist/
 .eggs/
 .cache/
 tmp/
+/src/checkmyc/data/json_schema/
