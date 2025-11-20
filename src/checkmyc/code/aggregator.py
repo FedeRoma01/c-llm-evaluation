@@ -108,14 +108,14 @@ def init_argparser():
         "--system_prompt",
         "-sp",
         type=str,
-        default="sys_extractor.md",
+        default="sys_aggregator.md",
         help="System prompt to be used",
     )
     parser.add_argument(
         "--user_prompt",
         "-up",
         type=str,
-        default="usr_extractor.md",
+        default="usr_aggregator.md",
         help="User prompt to be used",
     )
     parser.add_argument(
@@ -135,7 +135,7 @@ def init_argparser():
         "--html_template",
         "-html",
         type=str,
-        default="templ_extractor.html",
+        default="templ_aggregator.html",
         help="Intermediate result saving path",
     )
 

@@ -223,7 +223,7 @@ In this case specifying `-i` is necessary to have a correct performance test, si
 
 Using the command
 ```
-uv run python -m checkmyc.code.extractor
+uv run python -m checkmyc.code.aggregator
 ```
 it is possible to extract and aggregate negative comments for each evaluation topic from a dataset of evaluations.
 
