@@ -79,13 +79,6 @@ def init_argparser() -> argparse.ArgumentParser:
         "--system_prompt", "-sp", type=str, default="sp6.md", help="System prompts file"
     )
     parser.add_argument(
-        "--schema",
-        "-s",
-        type=str,
-        default="s5.json",
-        help="JSON output schema for the model",
-    )
-    parser.add_argument(
         "--provider", "-pr", type=str, help="Provider (openai/gemini/openrouter)"
     )
     parser.add_argument(
@@ -178,16 +171,8 @@ def main():
     exam_dir, exam_ctx = load_exam_context(input_args, paths, questions)
 
     # SCHEMA
-    """
-    schema_path = paths.get("schema")
-    if not schema_path or not Path(schema_path).exists():
-        raise FileNotFoundError(f"Schema file not found: {schema_path}")
-    schema = load_file(schema_path)
-    json_name = Path(schema_path).stem
-    """
     topic_list = [t["name"] for t in topics]
     schema = generate_schema(topic_list)
-    json_name = "s5"
 
     # PROMPTS CONSTRUCTION
     args_md = build_prompt_context(topics, analysis)
@@ -275,7 +260,9 @@ def main():
         timestamp = datetime.now().strftime("%H-%M-%S")
         output_dir = Path(paths.get("output")) / make_safe_dirname(input_args.model)
         output_dir.mkdir(parents=True, exist_ok=True)
-        output_name = f"{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}_{json_name}.json"
+        output_name = (
+            f"{timestamp}_{program_name}_{system_prompt_name}_{user_prompt_name}.json"
+        )
         output_path = output_dir / output_name
 
         save_json_and_html(

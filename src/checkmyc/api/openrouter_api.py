@@ -48,7 +48,7 @@ def run_openrouter(sys_prompt, usr_prompt, schema, model, temperature, debug):
     if debug:
         print(response)
 
-    # Robust extraction
+    # Robust aggregation
     message = getattr(response.choices[0], "message", {})
     content = getattr(message, "content", "").strip()
 

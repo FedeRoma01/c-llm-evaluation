@@ -3,14 +3,14 @@
 # USD / 1M tokens
 # Use field names referring to fields returned by the model API call (see official models docs)
 [models."gpt-4.1-mini"]
-cached_tokens = 0.20
-prompt_tokens = 0.80
-completion_tokens = 3.20
+cached_tokens = 0.10
+prompt_tokens = 0.40
+completion_tokens = 1.60
 
 [models."gpt-4.1-nano"]
-cached_tokens = 0.05
-prompt_tokens = 0.20
-completion_tokens = 0.80
+cached_tokens = 0.0025
+prompt_tokens = 0.10
+completion_tokens = 0.40
 
 [models."deepseek/deepseek-chat-v3-0324"]
 prompt_tokens = 0.25

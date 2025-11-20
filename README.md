@@ -19,6 +19,7 @@ project_root/
 │       ├── __main__.py                # Main entry point
 │       ├── code/                      # Contains evaluation logic and utilities
 │       │   ├── evals.py               # Compilation, timing, and pvcheck logic
+│       │   ├── aggregator.py          # Aggregator tool
 │       │   └── config.py              # Program setup functions
 |       |
 │       ├── api/                       # Contains API logic and utilities
@@ -37,9 +38,6 @@ project_root/
 │           │   ├── system/
 │           │   └── user/
 |           |
-│           ├── json_schema/           # JSON schemas for LLM structured outputs
-│           │   └── comments_schema.json
-|           |
 │           ├── topics/                # Markdown topic descriptions for evaluation (specified in llm.toml)
 │           └── templates/             # HTML report templates
 │
@@ -48,6 +46,7 @@ project_root/
 |   └── 20220728/                      # exam folder (contains pvcheck.test, context.md, solution.c and input.dat)
 |
 ├── output/                            # Generated output files and reports
+│   ├── aggregation/                   # folder containing the comments aggregation obtained using the aggregation tool
 │   └── gpt-4_1-mini/                  # output folder containing gpt-4.1-mini based evaluations
 │
 ├── config.toml                        # General configuration file
@@ -151,7 +150,7 @@ uv run checkmyc <program_file.c> <model> [options]
 
 ### Arguments
 
-* `program` (str): The C program file to evaluate.
+* `program` (str): The C program file or the directory containing a set of programs to evaluate.
 * `model` (str): LLM model to use.
 
 ### Options
@@ -162,8 +161,7 @@ uv run checkmyc <program_file.c> <model> [options]
 * `--solution, -sol` (str): Example solution program (used as reference).
 * `--config, -cf`: Enables pre-configured input file paths.  
 * `--system_prompt, -sp` (str): System prompt file (default: `sp6.md`).  
-* `--user_prompt, -up` (str): User prompt file (default: `up4.md`).  
-* `--schema, -s` (str): JSON schema file (default: `s5.json`).  
+* `--user_prompt, -up` (str): User prompt file (default: `up4.md`).   
 * `--provider, -pr` (str): Provider to use for the specified model. 
 * `--prompt_price, -pp` (float): Maximum price per 1M tokens for the prompt (default: '0').  
 * `--completion_price, -cp` (float): Maximum price per 1M tokens for the completion (default: '0').
@@ -172,7 +170,7 @@ uv run checkmyc <program_file.c> <model> [options]
 
 ### Specifications
 
-#### option `--exam`
+#### Option `--exam`
 When specifying the exam directory, it must contain the following files:
 
 * `pvcheck.test` – Test file for pvcheck.  
@@ -186,7 +184,7 @@ When specifying the exam directory, it must contain the following files:
 - Using `--exam` automatically ignores `--input`, `--context` and `--solution` options.  
 - Recommended when the directory contains context, solution and input files along with `pvcheck.test` to perform the pvcheck test.
 
-#### option `--provider`
+#### Option `--provider`
 Behavior changes depending on whether a provider is specified:
 
 * **Provider specified**:  
@@ -198,7 +196,7 @@ Behavior changes depending on whether a provider is specified:
 
 **Note:** Price constraints are only applied when no provider is explicitly specified.
 
-#### option `--output`
+#### Option `--output`
 The specified output directory will be put in the directory with the name of the used model. 
 
 ### Example
@@ -206,18 +204,43 @@ The specified output directory will be put in the directory with the name of the
 #### Execution with pvcheck
 
 ```bash
-uv run checkmyc prova.c gpt-4.1-mini -cf -ex 20220728 -up up4.md -sp sp6.md -s s5.json -pr openai
+uv run checkmyc prova.c gpt-4.1-mini -cf -ex 20220728 -up up4.md -sp sp6.md -pr openai
 ```
 
-This command evaluates `prova.c` against the exam resources in `20220728/` using `gpt-4.1-mini` and specified prompt/schema files. All files refer to pre-configured paths.
+This command evaluates `prova.c` against the exam resources in `20220728/` using `gpt-4.1-mini` and specified prompt files. All files refer to pre-configured paths.
 
 #### Execution without pvcheck
 
 ```bash
-uv run checkmyc prova.c gpt-4.1-mini -cf -i 20220728/Esempio_nel_testo.dat -up up4.md -sp sp6.md -s s5.json
+uv run checkmyc prova.c gpt-4.1-mini -cf -i 20220728/Esempio_nel_testo.dat -up up4.md -sp sp6.md
 ```
-This command evaluates `prova.c` without any context and reference solution, using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt/schema files. All files refer to pre-configured paths.
+This command evaluates `prova.c` without any context and reference solution, using GPT-4.1-mini, `Esempio_nel_testo.dat` as input for `prova.c`, and specified prompt files. All files refer to pre-configured paths.
 In this case specifying `-i` is necessary to have a correct performance test, since `prova.c` needs an input file to execute correctly.
+
+---
+
+## Aggregator tool
+
+Using the command
+```
+uv run python -m checkmyc.code.extractor
+```
+it is possible to extract and aggregate negative comments for each evaluation topic from a dataset of evaluations.
+
+### Features
+
+- **Extracts negative evaluation comments** from multiple JSON outputs and assigns unique IDs.  
+- **Aggregates comments by evaluation topic** to reveal recurring weak points or misunderstandings.  
+- **Clusters similar negative comments** using an LLM with a schema-guided prompt.  
+- **Reconstructs final clustered output** by restoring original comment texts.  
+- **Produces structured JSON and HTML summaries** for downstream analysis.
+
+### Functionality
+
+- Produces, for each evaluation topic, a mapped set of recurring issues and error patterns identified in the model’s negative comments.
+- Highlights systematic misunderstandings or weak points in how the model applies the evaluation rules.
+- Provides structured data that can be used to refine and rewrite evaluation prompts, making criteria clearer and reducing ambiguity.
+- Enables iterative improvement of evaluation guidelines by revealing where the model consistently fails to follow the intended instructions.
 
 ---
 

@@ -16,7 +16,7 @@ def normalize_usage_openai(usage: dict) -> dict:
 
 def run_openai(sys_prompt, usr_prompt, schema, model, temperature, debug):
     key = check_api_key("OPENAI_API_KEY")
-    client = OpenAI(api_key=key)
+    client = OpenAI(api_key=key, max_retries=0)
     try:
         response = client.responses.create(
             model=model,
